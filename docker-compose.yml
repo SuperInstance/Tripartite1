@@ -1,0 +1,151 @@
+# SuperInstance AI - Docker Compose
+#
+# Local development environment with all services
+#
+# Usage:
+#   docker compose up -d        # Start all services
+#   docker compose logs -f      # View logs
+#   docker compose down         # Stop all services
+
+version: '3.8'
+
+services:
+  # Main Synesis CLI/API service
+  synesis:
+    build:
+      context: .
+      target: runtime
+    container_name: synesis
+    volumes:
+      - synesis-data:/data
+      - ./manifests:/usr/share/synesis/manifests:ro
+    environment:
+      - SYNESIS_DATA_DIR=/data
+      - RUST_LOG=info,synesis=debug
+      - SYNESIS_CLOUD_ENDPOINT=http://cloud-mock:8787
+    ports:
+      - "8080:8080"  # API port (if serving)
+    depends_on:
+      - cloud-mock
+    restart: unless-stopped
+
+  # Development environment with hot reload
+  synesis-dev:
+    build:
+      context: .
+      target: development
+    container_name: synesis-dev
+    volumes:
+      - .:/app
+      - synesis-dev-data:/data
+      - cargo-cache:/usr/local/cargo/registry
+      - target-cache:/app/target
+    environment:
+      - SYNESIS_DATA_DIR=/data
+      - RUST_LOG=debug
+      - CARGO_INCREMENTAL=1
+    ports:
+      - "8081:8080"
+    command: cargo watch -x "run -p synesis-cli -- status"
+    profiles:
+      - dev
+
+  # GPU-enabled service (requires NVIDIA runtime)
+  synesis-gpu:
+    build:
+      context: .
+      target: gpu-runtime
+    container_name: synesis-gpu
+    volumes:
+      - synesis-data:/data
+    environment:
+      - SYNESIS_DATA_DIR=/data
+      - CUDA_VISIBLE_DEVICES=0
+      - RUST_LOG=info
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    profiles:
+      - gpu
+
+  # Mock cloud service for local development
+  cloud-mock:
+    image: node:20-slim
+    container_name: cloud-mock
+    working_dir: /app
+    volumes:
+      - ./cloud:/app
+    command: npx wrangler dev --local
+    ports:
+      - "8787:8787"
+    environment:
+      - NODE_ENV=development
+    profiles:
+      - dev
+
+  # SQLite web UI for debugging knowledge vault
+  sqlite-web:
+    image: coleifer/sqlite-web
+    container_name: sqlite-web
+    volumes:
+      - synesis-data:/data:ro
+    ports:
+      - "8088:8080"
+    environment:
+      - SQLITE_DATABASE=/data/knowledge/vault.db
+    profiles:
+      - debug
+
+  # Monitoring with Prometheus (optional)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    profiles:
+      - monitoring
+
+  # Grafana for dashboards (optional)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    depends_on:
+      - prometheus
+    profiles:
+      - monitoring
+
+volumes:
+  synesis-data:
+    name: synesis-data
+  synesis-dev-data:
+    name: synesis-dev-data
+  cargo-cache:
+    name: cargo-cache
+  target-cache:
+    name: target-cache
+  prometheus-data:
+    name: prometheus-data
+  grafana-data:
+    name: grafana-data
+
+networks:
+  default:
+    name: synesis-network

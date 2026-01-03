@@ -1,0 +1,158 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://superinstance.ai/schemas/hardware-manifest.json",
+  "title": "SuperInstance Hardware Manifest",
+  "description": "Schema for hardware capability manifests used by SuperInstance AI to determine model compatibility and optimal settings",
+  "type": "object",
+  "required": ["device", "compute", "memory", "models"],
+  "properties": {
+    "device": {
+      "type": "object",
+      "description": "Device identification and architecture information",
+      "required": ["name", "vendor", "architecture"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Human-readable device name (e.g., 'Jetson Orin Nano', 'RTX 4050 Laptop', 'Apple M2')",
+          "examples": [
+            "Jetson Orin Nano",
+            "NVIDIA RTX 4050 Laptop GPU",
+            "Apple M2"
+          ]
+        },
+        "vendor": {
+          "type": "string",
+          "description": "Hardware vendor/manufacturer",
+          "enum": ["nvidia", "amd", "apple", "intel", "qualcomm", "generic"]
+        },
+        "architecture": {
+          "type": "string",
+          "description": "System architecture (e.g., 'aarch64', 'x86_64', 'arm64')",
+          "enum": ["x86_64", "aarch64", "arm64", "riscv64"]
+        }
+      }
+    },
+    "compute": {
+      "type": "object",
+      "description": "Compute capabilities and acceleration features",
+      "required": ["gpu_type"],
+      "properties": {
+        "gpu_type": {
+          "type": "string",
+          "description": "GPU/compute acceleration type",
+          "enum": ["cuda", "rocm", "metal", "vulkan", "none"]
+        },
+        "compute_capability": {
+          "type": "string",
+          "description": "For NVIDIA GPUs: CUDA compute capability (e.g., '8.7', '8.9'). For others: driver version info.",
+          "pattern": "^[0-9]+\\.[0-9]+$"
+        },
+        "tensor_cores": {
+          "type": "boolean",
+          "description": "Whether the GPU has dedicated tensor cores for accelerated matrix operations"
+        },
+        "npu_type": {
+          "type": "string",
+          "description": "Neural Processing Unit type, if present",
+          "enum": ["none", "apple-ane", "intel-gna", "qualcomm-hexagon", "google-tpu", "jetson-npu"]
+        }
+      }
+    },
+    "memory": {
+      "type": "object",
+      "description": "Memory configuration and limits",
+      "required": ["vram_mb", "ram_recommended_mb"],
+      "properties": {
+        "vram_mb": {
+          "type": "integer",
+          "description": "Video RAM in megabytes (0 for CPU-only or unified memory systems)",
+          "minimum": 0,
+          "examples": [0, 4096, 6144, 8192, 12288, 24576]
+        },
+        "ram_recommended_mb": {
+          "type": "integer",
+          "description": "Recommended system RAM in megabytes for optimal performance",
+          "minimum": 4096,
+          "examples": [8192, 16384, 32768, 65536]
+        },
+        "unified_memory": {
+          "type": "boolean",
+          "description": "True for systems with unified memory architecture (Apple Silicon, Jetson, etc.) where CPU and GPU share the same memory pool"
+        }
+      }
+    },
+    "models": {
+      "type": "object",
+      "description": "Model recommendations and capabilities",
+      "required": ["max_context", "recommended", "supported_quantizations"],
+      "properties": {
+        "max_context": {
+          "type": "integer",
+          "description": "Maximum context window size supported by this hardware configuration",
+          "minimum": 1024,
+          "examples": [2048, 4096, 8192, 16384, 32768]
+        },
+        "recommended": {
+          "type": "array",
+          "description": "List of recommended models for this hardware, ordered by priority",
+          "items": {
+            "type": "object",
+            "required": ["name", "agent", "quantization", "size_mb"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Model name",
+                "examples": ["phi-3-mini-4k-instruct", "llama-3.2-8b-instruct", "mistral-7b-instruct"]
+              },
+              "agent": {
+                "type": "string",
+                "description": "Which tripartite agent uses this model",
+                "enum": ["pathos", "logos", "ethos", "embeddings"]
+              },
+              "quantization": {
+                "type": "string",
+                "description": "Recommended quantization format",
+                "enum": ["q4_0", "q4_k_m", "q5_k_m", "q6_k", "q8_0", "f16"]
+              },
+              "size_mb": {
+                "type": "integer",
+                "description": "Model size in megabytes",
+                "minimum": 1
+              }
+            }
+          }
+        },
+        "supported_quantizations": {
+          "type": "array",
+          "description": "Quantization formats supported by this hardware",
+          "items": {
+            "type": "string",
+            "enum": ["q4_0", "q4_k_m", "q5_k_m", "q6_k", "q8_0", "f16"]
+          },
+          "minItems": 1
+        }
+      }
+    },
+    "thermal": {
+      "type": "object",
+      "description": "Thermal and power constraints",
+      "required": ["tdp_watts", "throttle_temp_c"],
+      "properties": {
+        "tdp_watts": {
+          "type": "integer",
+          "description": "Thermal Design Power in watts (peak power consumption)",
+          "minimum": 5,
+          "examples": [10, 15, 30, 65, 150, 250, 350]
+        },
+        "throttle_temp_c": {
+          "type": "integer",
+          "description": "Temperature in Celsius at which thermal throttling begins",
+          "minimum": 60,
+          "maximum": 105,
+          "examples": [80, 85, 87, 90, 95, 100]
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

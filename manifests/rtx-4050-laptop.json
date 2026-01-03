@@ -1,0 +1,52 @@
+{
+  "device": {
+    "name": "NVIDIA RTX 4050 Laptop GPU",
+    "vendor": "nvidia",
+    "architecture": "x86_64"
+  },
+  "compute": {
+    "gpu_type": "cuda",
+    "compute_capability": "8.9",
+    "tensor_cores": true,
+    "npu_type": "none"
+  },
+  "memory": {
+    "vram_mb": 6144,
+    "ram_recommended_mb": 16384,
+    "unified_memory": false
+  },
+  "models": {
+    "max_context": 8192,
+    "recommended": [
+      {
+        "name": "phi-3-mini-4k-instruct",
+        "agent": "pathos",
+        "quantization": "q4_k_m",
+        "size_mb": 2400
+      },
+      {
+        "name": "llama-3.2-8b-instruct",
+        "agent": "logos",
+        "quantization": "q4_k_m",
+        "size_mb": 4700
+      },
+      {
+        "name": "mistral-7b-instruct",
+        "agent": "ethos",
+        "quantization": "q4_k_m",
+        "size_mb": 4100
+      },
+      {
+        "name": "bge-small-en-v1.5",
+        "agent": "embeddings",
+        "quantization": "f16",
+        "size_mb": 130
+      }
+    ],
+    "supported_quantizations": ["q4_0", "q4_k_m", "q5_k_m", "q6_k", "q8_0"]
+  },
+  "thermal": {
+    "tdp_watts": 65,
+    "throttle_temp_c": 87
+  }
+}

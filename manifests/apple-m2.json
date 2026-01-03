@@ -1,0 +1,52 @@
+{
+  "device": {
+    "name": "Apple M2",
+    "vendor": "apple",
+    "architecture": "arm64"
+  },
+  "compute": {
+    "gpu_type": "metal",
+    "compute_capability": "1.0",
+    "tensor_cores": true,
+    "npu_type": "apple-ane"
+  },
+  "memory": {
+    "vram_mb": 0,
+    "ram_recommended_mb": 16384,
+    "unified_memory": true
+  },
+  "models": {
+    "max_context": 8192,
+    "recommended": [
+      {
+        "name": "phi-3-mini-4k-instruct",
+        "agent": "pathos",
+        "quantization": "q4_k_m",
+        "size_mb": 2400
+      },
+      {
+        "name": "llama-3.2-8b-instruct",
+        "agent": "logos",
+        "quantization": "q5_k_m",
+        "size_mb": 5500
+      },
+      {
+        "name": "mistral-7b-instruct",
+        "agent": "ethos",
+        "quantization": "q4_k_m",
+        "size_mb": 4100
+      },
+      {
+        "name": "bge-small-en-v1.5",
+        "agent": "embeddings",
+        "quantization": "f16",
+        "size_mb": 130
+      }
+    ],
+    "supported_quantizations": ["q4_0", "q4_k_m", "q5_k_m", "q6_k", "q8_0"]
+  },
+  "thermal": {
+    "tdp_watts": 20,
+    "throttle_temp_c": 100
+  }
+}

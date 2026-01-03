@@ -1,0 +1,138 @@
+# SuperInstance AI
+
+> An AI that knows when to stay local, when to escalate to cloud, and keeps your secrets safe either way.
+
+[![CI](https://github.com/superinstance/synesis/workflows/CI/badge.svg)](https://github.com/superinstance/synesis/actions)
+[![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](LICENSE)
+
+## What is SuperInstance?
+
+SuperInstance AI is a **tripartite agentic system** that runs locally-first with intelligent cloud escalation:
+
+- **🧠 Three Specialized Agents**: Pathos (intent), Logos (logic), and Ethos (truth) reach consensus before responding
+- **🔒 Privacy Proxy**: Automatically redacts PII before any cloud transmission
+- **⚡ Local-First**: Processes on your hardware when possible, escalates to cloud when needed
+- **💰 Cost-Plus Pricing**: Just 3% over provider costs - no 10x markup
+
+## Quick Start
+
+```bash
+# Install
+curl -fsSL https://superinstance.ai/install.sh | sh
+
+# Initialize (downloads models, ~7GB)
+synesis init
+
+# Start chatting
+synesis ask "Hello, world!"
+```
+
+## Features
+
+### Tripartite Council
+Every response passes through three specialized agents:
+
+| Agent | Role | Question |
+|-------|------|----------|
+| **Pathos** | Intent | "What does the user actually want?" |
+| **Logos** | Logic | "How can we accomplish this?" |
+| **Ethos** | Truth | "Is this safe, accurate, and feasible?" |
+
+### Privacy Proxy
+Your sensitive data never leaves your machine:
+
+```
+You: "Fix the bug in /home/casey/secret-project/auth.py"
+     ↓ [Privacy Proxy: Redact]
+Cloud sees: "Fix the bug in [PATH_01]"
+     ↓ [Cloud Processing]
+     ↓ [Privacy Proxy: Restore]
+You: "Here's the fix for /home/casey/secret-project/auth.py..."
+```
+
+### Intelligent Routing
+- **Local**: Fast queries handled by on-device models
+- **Cloud**: Complex tasks escalated seamlessly
+- **Hybrid**: Best of both worlds automatically
+
+## System Requirements
+
+### Minimum (Local-Only)
+- 8GB RAM
+- 4GB disk space
+- Any modern CPU
+
+### Recommended (Full Experience)
+- 16GB RAM
+- NVIDIA GPU with 6GB+ VRAM (or Apple Silicon)
+- 20GB disk space
+
+## Documentation
+
+- [Architecture Overview](docs/architecture.md)
+- [API Reference](docs/api-reference.md)
+- [Privacy Guide](docs/privacy.md)
+- [Configuration](docs/configuration.md)
+
+## Development
+
+```bash
+# Clone
+git clone https://github.com/superinstance/synesis.git
+cd synesis
+
+# Build
+cargo build --release
+
+# Test
+cargo test --workspace
+
+# Run
+./target/release/synesis --help
+```
+
+## Project Structure
+
+```
+synesis/
+├── crates/
+│   ├── synesis-cli/        # Command-line interface
+│   ├── synesis-core/       # Agent orchestration
+│   ├── synesis-privacy/    # PII redaction
+│   ├── synesis-models/     # Model management
+│   └── synesis-knowledge/  # Vector database
+├── cloud/                  # Cloudflare Workers
+├── manifests/              # Hardware profiles
+└── docs/                   # Documentation
+```
+
+## Roadmap
+
+- [x] Phase 1: Local Kernel (CLI, Agents, Privacy)
+- [ ] Phase 2: Cloud Mesh (Escalation, Billing)
+- [ ] Phase 3: Marketplace (LoRA Trading)
+- [ ] Phase 4: Utility Infrastructure (SDKs, Enterprise)
+
+See [PROJECT_ROADMAP.md](PROJECT_ROADMAP.md) for details.
+
+## Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## License
+
+Licensed under either of:
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE))
+- MIT License ([LICENSE-MIT](LICENSE-MIT))
+
+at your option.
+
+## Acknowledgments
+
+- Built with [llama.cpp](https://github.com/ggerganov/llama.cpp)
+- Powered by [Cloudflare Workers](https://workers.cloudflare.com/)
+- Inspired by the belief that AI should serve users, not surveil them
+
+---
+
+**SuperInstance AI** - Your AI, Your Data, Your Control.

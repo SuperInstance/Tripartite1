@@ -1,0 +1,52 @@
+{
+  "device": {
+    "name": "NVIDIA Jetson Orin Nano",
+    "vendor": "nvidia",
+    "architecture": "aarch64"
+  },
+  "compute": {
+    "gpu_type": "cuda",
+    "compute_capability": "8.7",
+    "tensor_cores": true,
+    "npu_type": "jetson-npu"
+  },
+  "memory": {
+    "vram_mb": 8192,
+    "ram_recommended_mb": 8192,
+    "unified_memory": true
+  },
+  "models": {
+    "max_context": 4096,
+    "recommended": [
+      {
+        "name": "phi-3-mini-4k-instruct",
+        "agent": "pathos",
+        "quantization": "q4_k_m",
+        "size_mb": 2400
+      },
+      {
+        "name": "llama-3.2-3b-instruct",
+        "agent": "logos",
+        "quantization": "q4_k_m",
+        "size_mb": 2000
+      },
+      {
+        "name": "phi-3-mini-4k-instruct",
+        "agent": "ethos",
+        "quantization": "q4_k_m",
+        "size_mb": 2400
+      },
+      {
+        "name": "bge-micro-v1.5",
+        "agent": "embeddings",
+        "quantization": "f16",
+        "size_mb": 50
+      }
+    ],
+    "supported_quantizations": ["q4_0", "q4_k_m", "q5_k_m", "q8_0"]
+  },
+  "thermal": {
+    "tdp_watts": 15,
+    "throttle_temp_c": 85
+  }
+}

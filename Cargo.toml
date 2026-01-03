@@ -1,0 +1,96 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/synesis-cli",
+    "crates/synesis-core",
+    "crates/synesis-privacy",
+    "crates/synesis-models",
+    "crates/synesis-knowledge",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/superinstance/synesis"
+authors = ["SuperInstance AI <dev@superinstance.ai>"]
+
+[workspace.dependencies]
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# CLI
+clap = { version = "4", features = ["derive", "env"] }
+dialoguer = "0.11"
+indicatif = "0.17"
+comfy-table = "7"
+owo-colors = "4"
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+
+# Error handling
+anyhow = "1"
+thiserror = "1"
+
+# Async
+async-trait = "0.1"
+futures = "0.3"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Database
+rusqlite = { version = "0.31", features = ["bundled", "blob"] }
+
+# HTTP
+reqwest = { version = "0.12", features = ["json", "stream"] }
+
+# Crypto
+sha2 = "0.10"
+hex = "0.4"
+uuid = { version = "1", features = ["v4"] }
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Regex
+regex = "1"
+
+# Text processing
+unicode-segmentation = "1.10"
+
+# File watching
+notify = "6"
+
+# Directories
+dirs = "5"
+
+# System info
+sysinfo = "0.30"
+
+# Testing
+tokio-test = "0.4"
+tempfile = "3"
+criterion = { version = "0.5", features = ["html_reports"] }
+
+# Internal crates
+synesis-core = { path = "crates/synesis-core" }
+synesis-privacy = { path = "crates/synesis-privacy" }
+synesis-models = { path = "crates/synesis-models" }
+synesis-knowledge = { path = "crates/synesis-knowledge" }
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+strip = true
+
+[profile.dev]
+opt-level = 0
+debug = true
+
+[profile.dev.package."*"]
+opt-level = 2

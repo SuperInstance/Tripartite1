@@ -1,0 +1,138 @@
+# SuperInstance AI Configuration
+# Copy this file to ~/.superinstance/config.toml
+
+[general]
+# Data directory for models, knowledge, and cache
+data_dir = "~/.superinstance"
+
+# Logging level: trace, debug, info, warn, error
+log_level = "info"
+
+# Enable telemetry (anonymous usage stats)
+telemetry = false
+
+[agents]
+# Pathos agent - Intent extraction
+[agents.pathos]
+model = "phi-3-mini"
+enabled = true
+temperature = 0.7
+max_tokens = 1024
+
+# Logos agent - Reasoning and RAG
+[agents.logos]
+model = "llama-3.2-8b"
+enabled = true
+temperature = 0.7
+max_tokens = 2048
+
+# Ethos agent - Verification
+[agents.ethos]
+model = "mistral-7b-instruct"
+enabled = true
+temperature = 0.3
+max_tokens = 1024
+
+[privacy]
+# Redaction settings
+redact_emails = true
+redact_phones = true
+redact_paths = true
+redact_api_keys = true
+redact_ips = true
+redact_ssns = true
+
+# Custom redaction patterns (regex)
+# [[privacy.custom_patterns]]
+# name = "EMPLOYEE_ID"
+# pattern = "EMP-\\d{6}"
+
+[cloud]
+# Enable cloud escalation for complex queries
+enabled = true
+
+# Cloud API endpoint
+endpoint = "api.superinstance.ai"
+
+# Automatically escalate complex queries
+auto_escalate = true
+
+# Maximum tokens to process locally before considering escalation
+max_local_tokens = 4096
+
+# Require explicit user consent for each cloud request
+require_consent = false
+
+[consensus]
+# Minimum confidence threshold for consensus (0.0-1.0)
+threshold = 0.85
+
+# Maximum consensus rounds before returning best effort
+max_rounds = 3
+
+# Agent voting weights (must sum to 1.0)
+[consensus.weights]
+pathos = 0.25
+logos = 0.45
+ethos = 0.30
+
+[knowledge]
+# Embedding model
+embedding_model = "bge-micro"
+
+# Embedding dimensions
+embedding_dimensions = 384
+
+# Chunk size in tokens
+chunk_size = 512
+
+# Chunk overlap in tokens  
+chunk_overlap = 50
+
+# Watched directories for automatic indexing
+# watched_dirs = ["~/Documents", "~/Projects"]
+
+# File extensions to index
+extensions = ["md", "txt", "rs", "py", "js", "ts", "json", "yaml", "toml"]
+
+# Patterns to exclude
+exclude_patterns = [".git", "node_modules", "target", "__pycache__", ".venv"]
+
+[models]
+# Model storage directory
+models_dir = "~/.superinstance/models"
+
+# GPU layers to offload (0 = CPU only, -1 = auto)
+gpu_layers = -1
+
+# Context size (tokens)
+context_size = 4096
+
+# Batch size for inference
+batch_size = 512
+
+[inference]
+# Default temperature for generation
+temperature = 0.7
+
+# Top-p sampling
+top_p = 0.9
+
+# Top-k sampling  
+top_k = 40
+
+# Repetition penalty
+repeat_penalty = 1.1
+
+# Maximum tokens to generate
+max_tokens = 2048
+
+[ui]
+# Enable colored output
+color = true
+
+# Show progress bars
+progress = true
+
+# Streaming output
+streaming = true

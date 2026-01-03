@@ -1,0 +1,43 @@
+[package]
+name = "synesis-privacy"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Privacy proxy and redaction engine for SuperInstance AI"
+
+[dependencies]
+# Async
+tokio.workspace = true
+
+# Serialization
+serde.workspace = true
+serde_json.workspace = true
+
+# Error handling
+anyhow.workspace = true
+thiserror.workspace = true
+
+# Logging
+tracing.workspace = true
+
+# Regex for pattern matching
+regex.workspace = true
+
+# Crypto for hashing
+sha2.workspace = true
+hex.workspace = true
+
+# IDs
+uuid.workspace = true
+
+# Time
+chrono.workspace = true
+
+# Database for token vault
+rusqlite.workspace = true
+
+[dev-dependencies]
+tokio-test.workspace = true
+tempfile.workspace = true

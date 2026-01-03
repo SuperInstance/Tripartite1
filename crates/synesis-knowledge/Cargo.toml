@@ -1,0 +1,49 @@
+[package]
+name = "synesis-knowledge"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Knowledge vault for SuperInstance AI - vector database, embeddings, RAG"
+
+[dependencies]
+# Async
+tokio.workspace = true
+
+# Serialization
+serde.workspace = true
+serde_json.workspace = true
+
+# Error handling
+anyhow.workspace = true
+thiserror.workspace = true
+
+# Logging
+tracing.workspace = true
+
+# Async trait
+async-trait.workspace = true
+
+# Database (SQLite with vector extensions)
+rusqlite.workspace = true
+
+# IDs
+uuid.workspace = true
+
+# Time
+chrono.workspace = true
+
+# File watching
+notify.workspace = true
+
+# Crypto for content hashing
+sha2.workspace = true
+hex.workspace = true
+
+# Text processing
+unicode-segmentation.workspace = true
+
+[dev-dependencies]
+tokio-test.workspace = true
+tempfile.workspace = true

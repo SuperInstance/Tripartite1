@@ -1,0 +1,47 @@
+[package]
+name = "synesis-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Core orchestration engine for SuperInstance AI"
+
+[dependencies]
+# Workspace crates
+synesis-privacy.workspace = true
+synesis-models.workspace = true
+synesis-knowledge.workspace = true
+
+# Async
+tokio.workspace = true
+
+# Serialization
+serde.workspace = true
+serde_json.workspace = true
+
+# Error handling
+anyhow.workspace = true
+thiserror.workspace = true
+
+# Logging
+tracing.workspace = true
+
+# Async trait
+async-trait.workspace = true
+
+# IDs
+uuid.workspace = true
+
+# Time
+chrono.workspace = true
+
+# Crypto hashing
+sha2.workspace = true
+hex.workspace = true
+
+# Regex
+regex.workspace = true
+
+[dev-dependencies]
+tokio-test.workspace = true
