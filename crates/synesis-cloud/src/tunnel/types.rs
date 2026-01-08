@@ -133,7 +133,7 @@ mod tests {
 
     #[test]
     fn test_tunnel_state_transitions() {
-        let mut state = TunnelState::Disconnected;
+        let mut state = TunnelState::Disconnected; // Initial state
 
         // Disconnected -> Connecting
         state = TunnelState::Connecting {

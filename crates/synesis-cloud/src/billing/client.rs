@@ -184,6 +184,7 @@ pub struct CostCalculation {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use uuid::Uuid;
 
     fn make_test_client() -> BillingClient {
         BillingClient::new(

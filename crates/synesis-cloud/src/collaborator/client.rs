@@ -96,6 +96,7 @@ impl Default for CollaboratorClient {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::collaborator::CollaboratorRole;
 
     #[test]
     fn test_create_invite() {

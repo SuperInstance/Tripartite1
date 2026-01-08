@@ -105,6 +105,7 @@ impl Default for ConnectionStateMachine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::Instant;
 
     #[test]
     fn test_state_machine_creation() {
