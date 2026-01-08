@@ -1,7 +1,7 @@
 //! Token Vault
 //!
 //! Secure local storage for original values that have been redacted.
-//! Maps [EMAIL_0001] back to user@example.com
+//! Maps `[EMAIL_0001]` back to user@example.com
 //! Never leaves the local machine - this is the core of privacy protection.
 
 use std::collections::HashMap;
@@ -83,7 +83,7 @@ impl TokenVault {
 
     /// Store a value and return its token
     ///
-    /// Token format: [CATEGORY_NNNN] where NNNN is zero-padded counter per category (global)
+    /// Token format: `[CATEGORY_NNNN]` where NNNN is zero-padded counter per category (global)
     ///
     /// # Arguments
     /// * `category` - The category of sensitive data (e.g., "EMAIL", "PHONE")
@@ -159,7 +159,7 @@ impl TokenVault {
     /// Retrieve the original value for a token
     ///
     /// # Arguments
-    /// * `token` - The token to look up (e.g., "[EMAIL_0001]")
+    /// * `token` - The token to look up (e.g., "`[EMAIL_0001]`")
     ///
     /// # Returns
     /// * Some(original_value) if token exists

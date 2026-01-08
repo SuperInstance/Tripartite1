@@ -120,9 +120,9 @@ use crate::SynesisResult as CoreResult;
 /// # Lifecycle
 ///
 /// 1. Agent is created with [`AgentConfig`]
-/// 2. [`Agent::initialize()`] is called to load models
+/// 2. Models are loaded during agent creation
 /// 3. [`Agent::process()`] is called for each query
-/// 4. [`Agent::is_ready()`] checks if the agent is available
+/// 4. [`Agent::name()`] and [`Agent::role()`] provide metadata
 ///
 /// # Example
 ///

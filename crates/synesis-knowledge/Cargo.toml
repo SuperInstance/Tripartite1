@@ -44,6 +44,12 @@ hex.workspace = true
 # Text processing
 unicode-segmentation.workspace = true
 
+# Regex for pattern matching
+regex.workspace = true
+
+# Futures utilities
+futures.workspace = true
+
 [dev-dependencies]
 tokio-test.workspace = true
 tempfile.workspace = true

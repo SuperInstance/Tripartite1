@@ -329,26 +329,86 @@ impl SynesisError {
         match self {
             SynesisError::ModelNotFound(model) => {
                 format!(
-                    "Model '{}' not found. Run 'synesis model list' to see available models.",
-                    model
+                    "Model '{}' not found.\n  → Run 'synesis model list' to see available models\n  → Run 'synesis model download {}' to download it",
+                    model, model
                 )
             }
             SynesisError::FileNotFound(path) => {
-                format!("File not found: {}. Please check the path.", path)
-            }
-            SynesisError::PermissionDenied(path) => {
                 format!(
-                    "Permission denied: {}. Please check file permissions.",
+                    "File not found: {}.\n  → Please check the file path\n  → Ensure the file exists\n  → Run 'synesis init' if this is your first time",
                     path
                 )
             }
+            SynesisError::PermissionDenied(path) => {
+                format!(
+                    "Permission denied: {}.\n  → Please check file permissions\n  → Try running with appropriate permissions\n  → Check file ownership: ls -l {}",
+                    path, path
+                )
+            }
             SynesisError::NetworkConnection(msg) => {
-                format!("Network error: {}. Please check your internet connection.", msg)
+                format!(
+                    "Network error: {}.\n  → Please check your internet connection\n  → Try 'synesis cloud ping' to test connectivity\n  → Check firewall settings if problem persists",
+                    msg
+                )
+            }
+            SynesisError::NetworkTimeout(msg) => {
+                format!(
+                    "Network timeout: {}.\n  → Request took too long to complete\n  → Try again later or check network speed\n  → Consider using a smaller model",
+                    msg
+                )
             }
             SynesisError::InsufficientResources(msg) => {
                 format!(
-                    "Insufficient system resources: {}. Consider using a smaller model.",
+                    "Insufficient system resources: {}.\n  → Consider using a smaller model\n  → Close other applications\n  → Check available memory: free -h",
                     msg
+                )
+            }
+            SynesisError::ConfigParse(msg) => {
+                format!(
+                    "Configuration parse error: {}.\n  → Check config file syntax\n  → Run 'synesis config edit' to fix\n  → Reset with 'synesis config reset'",
+                    msg
+                )
+            }
+            SynesisError::ConfigValidation(msg) => {
+                format!(
+                    "Configuration validation failed: {}.\n  → Invalid configuration value\n  → Run 'synesis config get' to review\n  → Edit with 'synesis config edit'",
+                    msg
+                )
+            }
+            SynesisError::NoConsensus { rounds } => {
+                format!(
+                    "Consensus not reached after {} rounds.\n  → Agents could not agree on a response\n  → Try rephrasing your query\n  → Use --cloud to escalate to more powerful models\n  → Adjust threshold: export SYNESIS_CONSENSUS_THRESHOLD=0.75",
+                    rounds
+                )
+            }
+            SynesisError::EthosVeto { reason } => {
+                format!(
+                    "Response vetoed by Ethos agent: {}.\n  → Response was deemed unsafe or inaccurate\n  → Try rephrasing your request\n  → Check for factual errors\n  → Ensure request follows safety guidelines",
+                    reason
+                )
+            }
+            SynesisError::DocumentNotFound(doc) => {
+                format!(
+                    "Document not found: {}.\n  → Document may not be indexed\n  → Run 'synesis knowledge list' to see indexed documents\n  → Index with 'synesis knowledge index <path>'",
+                    doc
+                )
+            }
+            SynesisError::IndexingFailed(msg) => {
+                format!(
+                    "Document indexing failed: {}.\n  → Check document format\n  → Ensure file is readable\n  → Supported formats: PDF, TXT, MD, RS, PY, JS, TS",
+                    msg
+                )
+            }
+            SynesisError::EmbeddingError(msg) => {
+                format!(
+                    "Embedding generation failed: {}.\n  → Model may not be loaded\n  → Check model availability\n  → Ensure sufficient system resources",
+                    msg
+                )
+            }
+            SynesisError::TokenNotFound(token) => {
+                format!(
+                    "Token not found: {}.\n  → Session may have expired\n  → Tokens are cleared after each session\n  → This is normal and expected for privacy",
+                    token
                 )
             }
             _ => self.to_string(),
@@ -375,6 +435,21 @@ impl SynesisError {
                 | SynesisError::ConfigValidation(_)
                 | SynesisError::InvalidConfigValue(_)
         )
+    }
+
+    /// Get suggested recovery commands for this error
+    pub fn recovery_commands(&self) -> Vec<&'static str> {
+        match self {
+            SynesisError::ModelNotFound(_) => vec!["synesis model list", "synesis model download <model>"],
+            SynesisError::NetworkConnection(_) => vec!["synesis cloud ping", "ping -c 3 api.superinstance.ai"],
+            SynesisError::ConfigValidation(_) => vec!["synesis config edit", "synesis config reset"],
+            SynesisError::DocumentNotFound(_) => vec!["synesis knowledge list", "synesis knowledge index <path>"],
+            SynesisError::NoConsensus { .. } => vec![
+                "export SYNESIS_CONSENSUS_THRESHOLD=0.75",
+                "synesis ask --cloud \"<query>\"",
+            ],
+            _ => vec![],
+        }
     }
 }
 
@@ -469,5 +544,51 @@ mod tests {
         let msg = err.to_string();
         assert!(msg.contains("Unsafe response detected"));
         assert!(msg.contains("veto"));
+    }
+
+    #[test]
+    fn test_enhanced_error_context() {
+        let err = SynesisError::ModelNotFound("test-model".to_string());
+        let context = err.with_context();
+        assert!(context.contains("test-model"));
+        assert!(context.contains("synesis model list"));
+        assert!(context.contains("synesis model download"));
+    }
+
+    #[test]
+    fn test_recovery_commands() {
+        let err = SynesisError::ModelNotFound("test-model".to_string());
+        let commands = err.recovery_commands();
+        assert!(commands.contains(&"synesis model list"));
+        assert!(commands.contains(&"synesis model download <model>"));
+    }
+
+    #[test]
+    fn test_no_consensus_context() {
+        let err = SynesisError::NoConsensus { rounds: 3 };
+        let context = err.with_context();
+        assert!(context.contains("3"));
+        assert!(context.contains("rephrasing"));
+        assert!(context.contains("--cloud"));
+        assert!(context.contains("SYNESIS_CONSENSUS_THRESHOLD"));
+    }
+
+    #[test]
+    fn test_network_error_context() {
+        let err = SynesisError::NetworkConnection("Connection refused".to_string());
+        let context = err.with_context();
+        assert!(context.contains("Connection refused"));
+        assert!(context.contains("synesis cloud ping"));
+    }
+
+    #[test]
+    fn test_ethos_veto_context() {
+        let err = SynesisError::EthosVeto {
+            reason: "Factual inaccuracies detected".to_string(),
+        };
+        let context = err.with_context();
+        assert!(context.contains("Factual inaccuracies"));
+        assert!(context.contains("unsafe"));
+        assert!(context.contains("safety"));
     }
 }

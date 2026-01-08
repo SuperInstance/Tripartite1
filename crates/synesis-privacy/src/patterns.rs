@@ -3,10 +3,54 @@
 //! Defines patterns for detecting sensitive information in text.
 //! Includes built-in patterns for common PII types and support for custom patterns.
 
+use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 use crate::PrivacyResult;
+
+/// Cached compiled built-in patterns
+/// Compiled once at startup and reused for all PatternSet instances
+static COMPILED_BUILTIN_PATTERNS: Lazy<Vec<Pattern>> = Lazy::new(|| {
+    let patterns: Vec<Pattern> = [
+        // Priority 100: Private keys (most critical)
+        BuiltinPatterns::private_key(),
+        // Priority 95: SSNs (critical PII)
+        BuiltinPatterns::ssn(),
+        // Priority 90-94: Credentials and keys
+        BuiltinPatterns::credit_card(),
+        BuiltinPatterns::api_key_github(),
+        BuiltinPatterns::api_key_sk(),
+        BuiltinPatterns::aws_access_key(),
+        BuiltinPatterns::aws_secret_key(),
+        BuiltinPatterns::github_token(),
+        BuiltinPatterns::slack_token(),
+        // Priority 80-89: API keys and secrets
+        BuiltinPatterns::api_key_generic(),
+        BuiltinPatterns::password_in_context(),
+        BuiltinPatterns::email(),
+        // Priority 70-79: URLs with tokens
+        BuiltinPatterns::url_with_token(),
+        // Priority 65-70: Phone numbers
+        BuiltinPatterns::phone_us(),
+        BuiltinPatterns::phone_international(),
+        // Priority 60: IP addresses
+        BuiltinPatterns::ipv4(),
+        BuiltinPatterns::ipv6(),
+        // Priority 50: File paths
+        BuiltinPatterns::file_path_unix(),
+        BuiltinPatterns::file_path_windows(),
+    ]
+    .into_iter()
+    .flatten()
+    .collect();
+
+    // Sort by priority (highest first)
+    let mut sorted_patterns = patterns;
+    sorted_patterns.sort_by(|a, b| b.priority.cmp(&a.priority));
+    sorted_patterns
+});
 
 /// Types of patterns we can detect
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -78,8 +122,8 @@ pub struct Pattern {
     pub pattern_type: PatternType,
     /// Pattern name (for custom patterns)
     pub name: String,
-    /// Compiled regex
-    regex: Regex,
+    /// Compiled regex (wrapped in Arc for efficient cloning)
+    regex: Arc<Regex>,
     /// Whether this pattern is enabled
     pub enabled: bool,
     /// Priority (higher = checked first)
@@ -95,7 +139,7 @@ impl Pattern {
         Ok(Self {
             pattern_type,
             name: name.to_string(),
-            regex,
+            regex: Arc::new(regex),
             enabled: true,
             priority: 50,
         })
@@ -174,43 +218,13 @@ impl BuiltinPatterns {
     /// - IP addresses (priority 60): Network identifiers
     /// - File paths (priority 50): System-specific paths
     /// - Generic secrets (priority 85): Passwords in context
+    ///
+    /// **Performance**: Patterns are compiled once at startup and cached.
+    /// This method returns clones of the cached patterns, which is much
+    /// faster than recompiling regex patterns on every call.
     pub fn all() -> Vec<Pattern> {
-        let mut patterns: Vec<Pattern> = [
-            // Priority 100: Private keys (most critical)
-            Self::private_key(),
-            // Priority 95: SSNs (critical PII)
-            Self::ssn(),
-            // Priority 90-94: Credentials and keys
-            Self::credit_card(),
-            Self::api_key_github(),
-            Self::api_key_sk(),
-            Self::aws_access_key(),
-            Self::aws_secret_key(),
-            Self::github_token(),
-            Self::slack_token(),
-            // Priority 80-89: API keys and secrets
-            Self::api_key_generic(),
-            Self::password_in_context(),
-            Self::email(),
-            // Priority 70-79: URLs with tokens
-            Self::url_with_token(),
-            // Priority 65-70: Phone numbers
-            Self::phone_us(),
-            Self::phone_international(),
-            // Priority 60: IP addresses
-            Self::ipv4(),
-            Self::ipv6(),
-            // Priority 50: File paths
-            Self::file_path_unix(),
-            Self::file_path_windows(),
-        ]
-        .into_iter()
-        .flatten()
-        .collect();
-
-        // Sort by priority (highest first)
-        patterns.sort_by(|a, b| b.priority.cmp(&a.priority));
-        patterns
+        // Return clones of the cached patterns
+        COMPILED_BUILTIN_PATTERNS.clone()
     }
 
     /// Email pattern

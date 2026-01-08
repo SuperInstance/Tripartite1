@@ -25,6 +25,9 @@ tracing.workspace = true
 # Regex for pattern matching
 regex.workspace = true
 
+# Caching
+once_cell.workspace = true
+
 # Crypto for hashing
 sha2.workspace = true
 hex.workspace = true

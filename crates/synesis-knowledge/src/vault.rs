@@ -106,6 +106,22 @@ impl KnowledgeVault {
         Ok(vault)
     }
 
+    /// Create an in-memory knowledge vault for testing
+    #[cfg(test)]
+    pub fn in_memory() -> KnowledgeResult<Self> {
+        let conn = Connection::open_in_memory()?;
+
+        let vault = Self {
+            conn,
+            db_path: PathBuf::from(":memory:"),
+            embedding_dimensions: 384,
+        };
+
+        vault.init_schema()?;
+
+        Ok(vault)
+    }
+
     /// Initialize database schema
     fn init_schema(&self) -> KnowledgeResult<()> {
         debug!("Initializing vault schema");
