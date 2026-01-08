@@ -219,7 +219,8 @@ impl DocumentChunker {
 
         // Use RegexSet for single-pass multi-pattern matching
         // This is 2-3x faster than scanning for each pattern separately
-        let regex_set = RegexSet::new(patterns).unwrap();
+        let regex_set = RegexSet::new(patterns)
+            .expect("Code splitting patterns should be valid regex");
 
         let mut split_points: Vec<usize> = vec![0];
 
@@ -540,7 +541,10 @@ impl EmbeddingProvider for PlaceholderEmbedder {
 
             let task = tokio::spawn(async move {
                 // Acquire permit to limit concurrency
-                let _permit = semaphore.acquire().await.unwrap();
+                let _permit = semaphore
+                    .acquire()
+                    .await
+                    .expect("Semaphore should not be closed during normal operation");
                 // Generate embedding (CPU-bound work)
                 generate_placeholder_embedding(&text, 384)
             });
