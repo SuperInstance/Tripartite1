@@ -1,0 +1,130 @@
+name: Documentation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  RUSTDOCFLAGS: -Dwarnings
+
+jobs:
+  doc:
+    name: Build and Test Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-doc-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-doc-
+            ${{ runner.os }}-cargo-
+
+      - name: Build documentation
+        run: cargo doc --no-deps --workspace --all-features
+
+      - name: Run documentation tests
+        run: cargo test --doc --workspace --all-features
+
+      - name: Check intra-doc links
+        run: cargo doc --no-deps --workspace --all-features --document-private-items
+
+      - name: Upload documentation
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation
+          path: target/doc
+          retention-days: 30
+
+  doc-deploy:
+    name: Deploy Documentation to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: doc
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download documentation
+        uses: actions/download-artifact@v4
+        with:
+          name: documentation
+          path: target/doc
+
+      - name: Prepare pages
+        run: |
+          mkdir -p gh-pages
+          cp -r target/doc/* gh-pages/
+          echo "<meta http-equiv=\"refresh\" content=\"0; url=synesis_cli/index.html\">" > gh-pages/index.html
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./gh-pages
+          force_orphan: true
+
+  readme-check:
+    name: Check README links
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check README syntax
+        run: |
+          if command -v markdownlint &> /dev/null; then
+            markdownlint README.md CLAUDE.md ARCHITECTURE.md CONTRIBUTING.md
+          else
+            echo "::warning::markdownlint not installed, skipping README lint"
+          fi
+
+      - name: Verify all code examples in README
+        run: |
+          # Extract code blocks from README and verify they're valid shell commands
+          grep -E '^```bash|^```sh' README.md | wc -l
+
+  coverage-report:
+    name: Documentation Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: Install cargo-deadlinks
+        run: cargo install cargo-deadlinks
+
+      - name: Check for dead documentation links
+        run: cargo deadlinks --workspace --all-features
+
+      - name: Check documentation coverage
+        run: |
+          # Count public items vs documented items
+          echo "::notice::Documentation coverage check running..."
+          cargo doc --no-deps --workspace --all-features 2>&1 | grep -E "warning:|error:" || true

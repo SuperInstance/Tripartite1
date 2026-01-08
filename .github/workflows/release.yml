@@ -1,0 +1,394 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., v0.2.0)'
+        required: true
+        type: string
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -Dwarnings
+
+jobs:
+  validate:
+    name: Validate Release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.parse_version.outputs.version }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Parse version
+        id: parse_version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION=${GITHUB_REF#refs/tags/}
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Releasing version: $VERSION"
+
+      - name: Validate version format
+        run: |
+          VERSION="${{ steps.parse_version.outputs.version }}"
+          if [[ ! $VERSION =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Invalid version format: $VERSION (expected v*.*.*)"
+            exit 1
+          fi
+
+      - name: Check tag exists
+        if: github.event_name == 'push'
+        run: |
+          VERSION="${{ steps.parse_version.outputs.version }}"
+          if ! git rev-parse "$VERSION" >/dev/null 2>&1; then
+            echo "::error::Tag $VERSION does not exist"
+            exit 1
+          fi
+
+  build:
+    name: Build (${{ matrix.target }})
+    needs: validate
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          # Linux
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: synesis
+            asset_name: synesis-linux-x86_64
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            artifact_name: synesis
+            asset_name: synesis-linux-aarch64
+          # macOS
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact_name: synesis
+            asset_name: synesis-macos-x86_64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact_name: synesis
+            asset_name: synesis-macos-aarch64
+          # Windows
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact_name: synesis.exe
+            asset_name: synesis-windows-x86_64.exe
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: ${{ matrix.target }}
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-release-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-release-${{ matrix.target }}-
+            ${{ runner.os }}-cargo-release-
+
+      - name: Install cross-compilation tools
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - name: Build release binary
+        run: |
+          cargo build --release --target ${{ matrix.target }}
+
+      - name: Strip binary (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: |
+          strip target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
+
+      - name: Prepare release asset
+        run: |
+          cd target/${{ matrix.target }}/release
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            7z a ../../../${{ matrix.asset_name }}.zip ${{ matrix.artifact_name }}
+          else
+            tar czf ../../../${{ matrix.asset_name }}.tar.gz ${{ matrix.artifact_name }}
+          fi
+          cd ../../../..
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}
+          path: |
+            ${{ matrix.asset_name }}.tar.gz
+            ${{ matrix.asset_name }}.zip
+
+  test-release:
+    name: Test Release Binary
+    needs: build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact: synesis-linux-x86_64
+            extension: tar.gz
+          - os: macos-latest
+            artifact: synesis-macos-x86_64
+            extension: tar.gz
+          - os: windows-latest
+            artifact: synesis-windows-x86_64.exe
+            extension: zip
+
+    steps:
+      - name: Download release artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: .
+
+      - name: Extract binary (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: |
+          tar xzf ${{ matrix.artifact }}.${{ matrix.extension }}
+          chmod +x synesis
+
+      - name: Extract binary (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          7z x ${{ matrix.artifact }}.${{ matrix.extension }}
+
+      - name: Test binary help
+        run: |
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            ./synesis.exe --version
+          else
+            ./synesis --version
+          fi
+
+  create-release:
+    name: Create GitHub Release
+    needs: [validate, build, test-release]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          cat > release_notes.md << 'EOF'
+          # SuperInstance AI ${{ needs.validate.outputs.version }}
+
+          ## Installation
+
+          ### Linux (x86_64)
+          ```bash
+          wget https://github.com/SuperInstance/Tripartite1/releases/download/${VERSION}/synesis-linux-x86_64.tar.gz
+          tar xzf synesis-linux-x86_64.tar.gz
+          sudo mv synesis /usr/local/bin/
+          ```
+
+          ### Linux (ARM64)
+          ```bash
+          wget https://github.com/SuperInstance/Tripartite1/releases/download/${VERSION}/synesis-linux-aarch64.tar.gz
+          tar xzf synesis-linux-aarch64.tar.gz
+          sudo mv synesis /usr/local/bin/
+          ```
+
+          ### macOS (Intel)
+          ```bash
+          curl -L https://github.com/SuperInstance/Tripartite1/releases/download/${VERSION}/synesis-macos-x86_64.tar.gz -o synesis.tar.gz
+          tar xzf synesis.tar.gz
+          sudo mv synesis /usr/local/bin/
+          ```
+
+          ### macOS (Apple Silicon)
+          ```bash
+          curl -L https://github.com/SuperInstance/Tripartite1/releases/download/${VERSION}/synesis-macos-aarch64.tar.gz -o synesis.tar.gz
+          tar xzf synesis.tar.gz
+          sudo mv synesis /usr/local/bin/
+          ```
+
+          ### Windows (x86_64)
+          ```powershell
+          Invoke-WebRequest -Uri "https://github.com/SuperInstance/Tripartite1/releases/download/${VERSION}/synesis-windows-x86_64.exe.zip" -OutFile "synesis.zip"
+          Expand-Archive synesis.zip
+          # Add to PATH or use directly
+          ```
+
+          ## What's Changed
+
+          See [CHANGELOG.md](https://github.com/SuperInstance/Tripartite1/blob/main/status/CHANGELOG.md) for detailed changes.
+
+          ## Verification
+
+          Verify the integrity of downloaded binaries using checksums:
+          ```bash
+          sha256sum synesis-*
+          ```
+          EOF
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.validate.outputs.version }}
+          name: Release ${{ needs.validate.outputs.version }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+          files: |
+            artifacts/*/*.tar.gz
+            artifacts/*/*.zip
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-crates:
+    name: Publish to crates.io
+    needs: [validate, create-release]
+    runs-on: ubuntu-latest
+    environment:
+      name: crates.io
+      url: https://crates.io
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: Login to crates.io
+        run: cargo login ${{ secrets.CRATES_IO_TOKEN }}
+
+      - name: Publish synesis-models
+        run: cargo publish --package synesis-models
+
+      - name: Wait for registry (models)
+        run: sleep 30
+
+      - name: Publish synesis-privacy
+        run: cargo publish --package synesis-privacy
+
+      - name: Wait for registry (privacy)
+        run: sleep 30
+
+      - name: Publish synesis-knowledge
+        run: cargo publish --package synesis-knowledge
+
+      - name: Wait for registry (knowledge)
+        run: sleep 30
+
+      - name: Publish synesis-core
+        run: cargo publish --package synesis-core
+
+      - name: Wait for registry (core)
+        run: sleep 30
+
+      - name: Publish synesis-cloud
+        run: cargo publish --package synesis-cloud
+
+      - name: Wait for registry (cloud)
+        run: sleep 30
+
+      - name: Publish synesis-cli
+        run: cargo publish --package synesis-cli
+
+  docker:
+    name: Build and Push Docker Image
+    needs: [validate, create-release]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/superinstance/synesis
+          tags: |
+            type=semver,pattern={{version}},value=${{ needs.validate.outputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.validate.outputs.version }}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+  release-summary:
+    name: Release Summary
+    needs: [validate, create-release, publish-crates, docker]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check all release jobs
+        run: |
+          echo "## Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Version: ${{ needs.validate.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- GitHub Release: ${{ needs.create-release.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- crates.io Publish: ${{ needs.publish-crates.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Docker Image: ${{ needs.docker.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.create-release.result }}" != "success" ] || \
+             [ "${{ needs.publish-crates.result }}" != "success" ] || \
+             [ "${{ needs.docker.result }}" != "success" ]; then
+            echo "::warning::Some release jobs failed. Please review."
+            exit 1
+          fi
+
+          echo "::notice::Release ${{ needs.validate.outputs.version }} completed successfully!"

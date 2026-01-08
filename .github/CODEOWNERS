@@ -1,0 +1,48 @@
+# Code Owners File
+#
+# This file controls who is automatically requested for review
+# when pull requests modify code in specific paths.
+#
+# Format: <pattern> <github-username>
+#
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Global fallback - all files
+* @SuperInstance/core-team
+
+# Core system
+/crates/synesis-core/ @SuperInstance/core-team
+/crates/synesis-core/src/agents/ @SuperInstance/core-team
+/crates/synesis-core/src/consensus/ @SuperInstance/core-team
+
+# Privacy system
+/crates/synesis-privacy/ @SuperInstance/core-team
+/crates/synesis-privacy/src/lib.rs @SuperInstance/core-team
+
+# Knowledge vault
+/crates/synesis-knowledge/ @SuperInstance/core-team
+/crates/synesis-knowledge/src/embeddings.rs @SuperInstance/core-team
+
+# Models and hardware
+/crates/synesis-models/ @SuperInstance/core-team
+
+# CLI interface
+/crates/synesis-cli/ @SuperInstance/core-team
+
+# Cloud infrastructure (Phase 2+)
+/crates/synesis-cloud/ @SuperInstance/core-team
+
+# Documentation
+*.md @SuperInstance/core-team
+/docs/ @SuperInstance/core-team
+
+# Configuration files
+/Cargo.toml @SuperInstance/core-team
+/.github/ @SuperInstance/core-team
+
+# Phase documentation
+/phases/ @SuperInstance/core-team
+/status/ @SuperInstance/core-team
+
+# Tests
+/tests/ @SuperInstance/core-team
