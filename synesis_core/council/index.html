@@ -1,0 +1,84 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Council Orchestrator"><title>synesis_core::council - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-ca0dd0c4.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="synesis_core" data-themes="" data-resource-suffix="" data-rustdoc-version="1.92.0 (ded5c06cf 2025-12-08)" data-channel="1.92.0" data-search-js="search-d69d8955.js" data-stringdex-js="stringdex-c3e638e9.js" data-settings-js="settings-c38705f0.js" ><script src="../../static.files/storage-e2aeef58.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../static.files/main-ce535bd0.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-263c88ec.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><rustdoc-topbar><h2><a href="#">Module council</a></h2></rustdoc-topbar><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../synesis_core/index.html">synesis_<wbr>core</a><span class="version">0.1.0</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Module council</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#council-orchestrator" title="Council Orchestrator">Council Orchestrator</a><ul><li><a href="#how-the-council-works" title="How the Council Works">How the Council Works</a></li><li><a href="#example-usage" title="Example Usage">Example Usage</a></li><li><a href="#agent-configuration" title="Agent Configuration">Agent Configuration</a></li><li><a href="#revision-rounds" title="Revision Rounds">Revision Rounds</a></li></ul></li></ul><h3><a href="#structs">Module Items</a></h3><ul class="block"><li><a href="#structs" title="Structs">Structs</a></li></ul></section><div id="rustdoc-modnav"><h2 class="in-crate"><a href="../index.html">In crate synesis_<wbr>core</a></h2></div></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><div class="width-limiter"><section id="main-content" class="content"><div class="main-heading"><div class="rustdoc-breadcrumbs"><a href="../index.html">synesis_core</a></div><h1>Module <span>council</span>&nbsp;<button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../../src/synesis_core/council.rs.html#1-551">Source</a> </span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="council-orchestrator"><a class="doc-anchor" href="#council-orchestrator">§</a>Council Orchestrator</h2>
+<p>This module provides the high-level orchestration for the tripartite council.
+The <code>Council</code> struct coordinates the three agents (Pathos, Logos, Ethos) to
+process queries through multi-round consensus.</p>
+<h3 id="how-the-council-works"><a class="doc-anchor" href="#how-the-council-works">§</a>How the Council Works</h3>
+<p>The council implements a sequential processing pipeline with revision loops:</p>
+<div class="example-wrap"><pre class="language-text"><code>User Query
+    │
+    ▼
+┌─────────────────────────────────────┐
+│ Round 1                             │
+│  Pathos → Logos → Ethos             │
+│  (intent → solution → verification) │
+└──────────────┬──────────────────────┘
+               │
+               ▼
+         Consensus Check
+               │
+       ┌───────┴────────┐
+       │                │
+   Reached          Not Reached
+       │                │
+       ▼                ▼
+  Return           Max Rounds?
+  Response             │
+                  ┌────┴────┐
+                  │         │
+                 Yes       No
+                  │         │
+                  ▼         ▼
+             Return    Next Round with
+             Partial   Feedback
+             Response</code></pre></div><h3 id="example-usage"><a class="doc-anchor" href="#example-usage">§</a>Example Usage</h3>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>synesis_core::{Council, CouncilConfig, A2AManifest};
+
+<span class="comment">// Create and initialize council
+</span><span class="kw">let </span><span class="kw-2">mut </span>council = Council::new(CouncilConfig::default());
+council.initialize().<span class="kw">await</span><span class="question-mark">?</span>;
+
+<span class="comment">// Process a query
+</span><span class="kw">let </span>manifest = A2AManifest::new(
+    <span class="string">"How do I implement a binary search tree?"</span>.to_string()
+);
+<span class="kw">let </span>response = council.process(manifest).<span class="kw">await</span><span class="question-mark">?</span>;
+
+<span class="macro">println!</span>(<span class="string">"Response: {}"</span>, response.content);
+<span class="macro">println!</span>(<span class="string">"Confidence: {:.2}"</span>, response.confidence);
+<span class="macro">println!</span>(<span class="string">"Rounds: {}"</span>, response.rounds);
+<span class="macro">println!</span>(<span class="string">"Used Cloud: {}"</span>, response.used_cloud);</code></pre></div><h3 id="agent-configuration"><a class="doc-anchor" href="#agent-configuration">§</a>Agent Configuration</h3>
+<p>Each agent can be configured independently:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>synesis_core::{CouncilConfig, AgentConfig};
+
+<span class="kw">let </span>config = CouncilConfig {
+    pathos: AgentConfig {
+        model: <span class="string">"phi-3-mini"</span>.to_string(),
+        temperature: <span class="number">0.7</span>,
+        max_tokens: <span class="number">1024</span>,
+        ..Default::default()
+    },
+    logos: AgentConfig {
+        model: <span class="string">"llama-3.2-8b"</span>.to_string(),
+        temperature: <span class="number">0.7</span>,
+        max_tokens: <span class="number">2048</span>,
+        ..Default::default()
+    },
+    ethos: AgentConfig {
+        model: <span class="string">"phi-3-mini-4k"</span>.to_string(),
+        temperature: <span class="number">0.3</span>,  <span class="comment">// Lower for verification
+        </span>max_tokens: <span class="number">1024</span>,
+        ..Default::default()
+    },
+    consensus: Default::default(),
+};</code></pre></div><h3 id="revision-rounds"><a class="doc-anchor" href="#revision-rounds">§</a>Revision Rounds</h3>
+<p>If consensus is not reached on the first round, the council provides feedback
+to the agents and retries. The feedback includes:</p>
+<ul>
+<li>Which agent had low confidence</li>
+<li>What concerns were raised</li>
+<li>Suggestions for improvement</li>
+</ul>
+<p>The system will automatically reinject this feedback into the next round’s
+manifest, allowing agents to improve their responses.</p>
+</div></details><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><dl class="item-table"><dt><a class="struct" href="struct.Council.html" title="struct synesis_core::council::Council">Council</a></dt><dd>The tripartite council</dd><dt><a class="struct" href="struct.CouncilConfig.html" title="struct synesis_core::council::CouncilConfig">Council<wbr>Config</a></dt><dd>Council configuration</dd><dt><a class="struct" href="struct.CouncilResponse.html" title="struct synesis_core::council::CouncilResponse">Council<wbr>Response</a></dt><dd>Response from the council</dd><dt><a class="struct" href="struct.CouncilStatus.html" title="struct synesis_core::council::CouncilStatus">Council<wbr>Status</a></dt><dd>Status of the council</dd></dl></section></div></main></body></html>

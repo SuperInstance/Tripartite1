@@ -1,0 +1,71 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Consensus Engine"><title>synesis_core::consensus - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-ca0dd0c4.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="synesis_core" data-themes="" data-resource-suffix="" data-rustdoc-version="1.92.0 (ded5c06cf 2025-12-08)" data-channel="1.92.0" data-search-js="search-d69d8955.js" data-stringdex-js="stringdex-c3e638e9.js" data-settings-js="settings-c38705f0.js" ><script src="../../static.files/storage-e2aeef58.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../static.files/main-ce535bd0.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-263c88ec.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><rustdoc-topbar><h2><a href="#">Module consensus</a></h2></rustdoc-topbar><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../synesis_core/index.html">synesis_<wbr>core</a><span class="version">0.1.0</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Module consensus</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#consensus-engine" title="Consensus Engine">Consensus Engine</a><ul><li><a href="#how-consensus-works" title="How Consensus Works">How Consensus Works</a></li><li><a href="#privacy-integration" title="Privacy Integration">Privacy Integration</a></li><li><a href="#example-usage" title="Example Usage">Example Usage</a></li><li><a href="#configuration" title="Configuration">Configuration</a></li></ul></li></ul><h3><a href="#structs">Module Items</a></h3><ul class="block"><li><a href="#structs" title="Structs">Structs</a></li><li><a href="#enums" title="Enums">Enums</a></li></ul></section><div id="rustdoc-modnav"><h2 class="in-crate"><a href="../index.html">In crate synesis_<wbr>core</a></h2></div></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><div class="width-limiter"><section id="main-content" class="content"><div class="main-heading"><div class="rustdoc-breadcrumbs"><a href="../index.html">synesis_core</a></div><h1>Module <span>consensus</span>&nbsp;<button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../../src/synesis_core/consensus/mod.rs.html#1-1182">Source</a> </span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="consensus-engine"><a class="doc-anchor" href="#consensus-engine">§</a>Consensus Engine</h2>
+<p>This module implements the consensus mechanism that coordinates the tripartite council
+to reach agreement on responses before they are returned to the user.</p>
+<h3 id="how-consensus-works"><a class="doc-anchor" href="#how-consensus-works">§</a>How Consensus Works</h3>
+<p>The consensus engine runs the three agents (Pathos, Logos, Ethos) in sequence and evaluates
+their responses using weighted voting:</p>
+<ol>
+<li><strong>Run Agents</strong>: Pathos → Logos → Ethos (in that order)</li>
+<li><strong>Calculate Aggregate</strong>: Weighted sum of confidence scores
+<ul>
+<li>Default weights: Pathos (0.25), Logos (0.45), Ethos (0.30)</li>
+</ul>
+</li>
+<li><strong>Evaluate Outcome</strong>:
+<ul>
+<li><strong>Reached</strong>: Aggregate confidence ≥ threshold (default: 0.85)</li>
+<li><strong>Vetoed</strong>: Ethos detected a critical safety issue</li>
+<li><strong>Needs Revision</strong>: Below threshold but can retry with feedback</li>
+<li><strong>Not Reached</strong>: Below threshold after max rounds</li>
+</ul>
+</li>
+</ol>
+<h3 id="privacy-integration"><a class="doc-anchor" href="#privacy-integration">§</a>Privacy Integration</h3>
+<p>The consensus engine integrates with the redaction system to:</p>
+<ul>
+<li><strong>Redact</strong> sensitive information from user prompts before processing</li>
+<li><strong>Store</strong> original values in the token vault (local only, never sent to cloud)</li>
+<li><strong>Reinflate</strong> tokens in responses with original values</li>
+</ul>
+<p>This ensures that cloud processing never sees raw PII, credentials, or sensitive data.</p>
+<h3 id="example-usage"><a class="doc-anchor" href="#example-usage">§</a>Example Usage</h3>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>synesis_core::consensus::{ConsensusEngine, ConsensusConfig};
+<span class="kw">use </span>synesis_core::agents::{PathosAgent, LogosAgent, EthosAgent};
+<span class="kw">use </span>synesis_privacy::{Redactor, TokenVault};
+
+<span class="comment">// Create agents
+</span><span class="kw">let </span>pathos = PathosAgent::with_phi3();
+<span class="kw">let </span>logos = LogosAgent::new(Default::default());
+<span class="kw">let </span>ethos = EthosAgent::new(Default::default());
+
+<span class="comment">// Option 1: Basic consensus (no privacy)
+</span><span class="kw">let </span>_engine = ConsensusEngine::with_agents(pathos, logos, ethos);
+
+<span class="comment">// Option 2: With privacy redaction enabled
+// Note: This would require creating new agents for the second example
+// let vault = TokenVault::in_memory()?;
+// let redactor = Redactor::new(Default::default(), vault)?;
+// let pathos2 = PathosAgent::with_phi3();
+// let logos2 = LogosAgent::new(Default::default());
+// let ethos2 = EthosAgent::new(Default::default());
+// let mut engine = ConsensusEngine::with_redactor(
+//     ConsensusConfig::default(),
+//     pathos2,
+//     logos2,
+//     ethos2,
+//     redactor,
+//     "session-123".to_string()
+// );</span></code></pre></div><h3 id="configuration"><a class="doc-anchor" href="#configuration">§</a>Configuration</h3>
+<p>Customize consensus behavior with <a href="struct.ConsensusConfig.html" title="struct synesis_core::consensus::ConsensusConfig"><code>ConsensusConfig</code></a>:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>synesis_core::consensus::{ConsensusConfig, AgentWeights};
+
+<span class="kw">let </span>config = ConsensusConfig {
+    threshold: <span class="number">0.90</span>,  <span class="comment">// Higher confidence required
+    </span>max_rounds: <span class="number">5</span>,    <span class="comment">// More revision rounds
+    </span>weights: AgentWeights {
+        pathos: <span class="number">0.20</span>,  <span class="comment">// Less weight on intent
+        </span>logos: <span class="number">0.50</span>,   <span class="comment">// More weight on reasoning
+        </span>ethos: <span class="number">0.30</span>,   <span class="comment">// Keep verification weight
+    </span>},
+};</code></pre></div></div></details><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><dl class="item-table"><dt><a class="struct" href="struct.AgentWeights.html" title="struct synesis_core::consensus::AgentWeights">Agent<wbr>Weights</a></dt><dd>Voting weights for each agent</dd><dt><a class="struct" href="struct.ConsensusConfig.html" title="struct synesis_core::consensus::ConsensusConfig">Consensus<wbr>Config</a></dt><dd>Consensus engine configuration</dd><dt><a class="struct" href="struct.ConsensusEngine.html" title="struct synesis_core::consensus::ConsensusEngine">Consensus<wbr>Engine</a></dt><dd>The consensus engine</dd><dt><a class="struct" href="struct.ConsensusOutcome.html" title="struct synesis_core::consensus::ConsensusOutcome">Consensus<wbr>Outcome</a></dt><dd>Complete outcome from a consensus run</dd><dt><a class="struct" href="struct.RedactionStats.html" title="struct synesis_core::consensus::RedactionStats">Redaction<wbr>Stats</a></dt><dd>Statistics about redaction (re-export from privacy crate)</dd><dt><a class="struct" href="struct.Votes.html" title="struct synesis_core::consensus::Votes">Votes</a></dt><dd>Individual agent votes</dd></dl><h2 id="enums" class="section-header">Enums<a href="#enums" class="anchor">§</a></h2><dl class="item-table"><dt><a class="enum" href="enum.ConsensusResult.html" title="enum synesis_core::consensus::ConsensusResult">Consensus<wbr>Result</a></dt><dd>Result of consensus evaluation</dd><dt><a class="enum" href="enum.Verdict.html" title="enum synesis_core::consensus::Verdict">Verdict</a></dt><dd>Verdict from Ethos</dd></dl></section></div></main></body></html>

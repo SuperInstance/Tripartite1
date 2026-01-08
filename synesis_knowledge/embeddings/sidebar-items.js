@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["DocType"],"fn":["cosine_similarity","euclidean_distance","generate_placeholder_embedding","normalize_embedding"],"mod":["tree_sitter_placeholder"],"struct":["BatchOptions","Chunk","ChunkMetadata","DocumentChunker","EmbeddingPipeline","LocalEmbedder","PlaceholderEmbedder"],"trait":["EmbeddingProvider"]};

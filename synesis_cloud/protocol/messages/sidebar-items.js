@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["TunnelMessage"],"struct":["ErrorData","EscalationContextData","EscalationRequestData","EscalationResponseData","HeartbeatAckData","HeartbeatData","KnowledgeChunkData","MessageData","PrewarmSignalData","StreamChunkData","StreamEndData","TokenUsageData","UserPreferencesData"]};

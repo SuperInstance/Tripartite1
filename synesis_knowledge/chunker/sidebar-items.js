@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["detect_document_type","estimate_tokens","split_sentences"],"struct":["Chunk","ChunkOptions","Chunker"]};

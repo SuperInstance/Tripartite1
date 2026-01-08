@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["create_directories","download_models","format_bytes","init_knowledge_vault","print_banner","print_step","recommend_models","run","write_config"],"struct":["InitArgs"]};

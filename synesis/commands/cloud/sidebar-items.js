@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["CloudCommands"],"fn":["ask","invite","login","logout","ping","push","run","show_balance","show_status","show_usage","sync","topup"],"struct":["AskArgs","InviteArgs","LoginArgs","PushArgs","TopupArgs","UsageArgs"]};

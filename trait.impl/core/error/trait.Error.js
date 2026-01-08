@@ -1,0 +1,9 @@
+(function() {
+    var implementors = Object.fromEntries([["synesis_cloud",[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.92.0/core/error/trait.Error.html\" title=\"trait core::error::Error\">Error</a> for <a class=\"enum\" href=\"synesis_cloud/error/enum.CloudError.html\" title=\"enum synesis_cloud::error::CloudError\">CloudError</a>"]]],["synesis_core",[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.92.0/core/error/trait.Error.html\" title=\"trait core::error::Error\">Error</a> for <a class=\"enum\" href=\"synesis_core/error/enum.SynesisError.html\" title=\"enum synesis_core::error::SynesisError\">SynesisError</a>"]]],["synesis_knowledge",[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.92.0/core/error/trait.Error.html\" title=\"trait core::error::Error\">Error</a> for <a class=\"enum\" href=\"synesis_knowledge/enum.KnowledgeError.html\" title=\"enum synesis_knowledge::KnowledgeError\">KnowledgeError</a>"]]],["synesis_models",[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.92.0/core/error/trait.Error.html\" title=\"trait core::error::Error\">Error</a> for <a class=\"enum\" href=\"synesis_models/enum.ModelError.html\" title=\"enum synesis_models::ModelError\">ModelError</a>"]]],["synesis_privacy",[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.92.0/core/error/trait.Error.html\" title=\"trait core::error::Error\">Error</a> for <a class=\"enum\" href=\"synesis_privacy/enum.PrivacyError.html\" title=\"enum synesis_privacy::PrivacyError\">PrivacyError</a>"]]]]);
+    if (window.register_implementors) {
+        window.register_implementors(implementors);
+    } else {
+        window.pending_implementors = implementors;
+    }
+})()
+//{"start":57,"fragment_lengths":[297,301,309,288,297]}

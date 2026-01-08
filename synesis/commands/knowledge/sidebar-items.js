@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["KnowledgeCommands"],"fn":["add_documents","list_documents","reindex_vault","remove_documents","run","search_vault","show_stats","watch_directory"],"struct":["AddArgs","ListArgs","ReindexArgs","RemoveArgs","SearchArgs","WatchArgs"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["bge_micro","llama_3_2_8b_q4","mistral_7b_instruct_q4","phi3_mini_q4","recommended_models"]};

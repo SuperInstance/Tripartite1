@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["chunk_code_syntax_aware"]};

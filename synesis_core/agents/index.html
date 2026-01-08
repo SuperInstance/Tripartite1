@@ -1,0 +1,79 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Tripartite Agent System"><title>synesis_core::agents - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-ca0dd0c4.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="synesis_core" data-themes="" data-resource-suffix="" data-rustdoc-version="1.92.0 (ded5c06cf 2025-12-08)" data-channel="1.92.0" data-search-js="search-d69d8955.js" data-stringdex-js="stringdex-c3e638e9.js" data-settings-js="settings-c38705f0.js" ><script src="../../static.files/storage-e2aeef58.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../static.files/main-ce535bd0.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-263c88ec.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><rustdoc-topbar><h2><a href="#">Module agents</a></h2></rustdoc-topbar><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../synesis_core/index.html">synesis_<wbr>core</a><span class="version">0.1.0</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Module agents</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#tripartite-agent-system" title="Tripartite Agent System">Tripartite Agent System</a><ul><li><a href="#the-three-agents" title="The Three Agents">The Three Agents</a></li><li><a href="#agent-trait" title="Agent Trait">Agent Trait</a></li><li><a href="#communication-flow" title="Communication Flow">Communication Flow</a></li></ul></li></ul><h3><a href="#reexports">Module Items</a></h3><ul class="block"><li><a href="#reexports" title="Re-exports">Re-exports</a></li><li><a href="#modules" title="Modules">Modules</a></li><li><a href="#structs" title="Structs">Structs</a></li><li><a href="#enums" title="Enums">Enums</a></li><li><a href="#traits" title="Traits">Traits</a></li><li><a href="#types" title="Type Aliases">Type Aliases</a></li></ul></section><div id="rustdoc-modnav"><h2 class="in-crate"><a href="../index.html">In crate synesis_<wbr>core</a></h2></div></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><div class="width-limiter"><section id="main-content" class="content"><div class="main-heading"><div class="rustdoc-breadcrumbs"><a href="../index.html">synesis_core</a></div><h1>Module <span>agents</span>&nbsp;<button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../../src/synesis_core/agents/mod.rs.html#1-832">Source</a> </span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="tripartite-agent-system"><a class="doc-anchor" href="#tripartite-agent-system">§</a>Tripartite Agent System</h2>
+<p>This module defines the agent trait and implementations for the three specialized agents
+that form the SuperInstance council.</p>
+<h3 id="the-three-agents"><a class="doc-anchor" href="#the-three-agents">§</a>The Three Agents</h3><h4 id="pathos---intent-agent"><a class="doc-anchor" href="#pathos---intent-agent">§</a>Pathos - Intent Agent</h4>
+<p><strong>Role</strong>: Understand what the user truly wants</p>
+<p>Pathos extracts clear intent from ambiguous human prompts by:</p>
+<ul>
+<li>Identifying the user’s true goal (telos)</li>
+<li>Detecting implicit constraints not explicitly stated</li>
+<li>Profiling user expertise level (Novice/Intermediate/Expert)</li>
+<li>Determining communication style preference (Formal/Casual/Technical)</li>
+<li>Setting verification scope for Ethos (facts, hardware, safety)</li>
+</ul>
+<p><strong>Model</strong>: phi-3-mini (fast, efficient, good at classification)</p>
+<h4 id="logos---logic-agent"><a class="doc-anchor" href="#logos---logic-agent">§</a>Logos - Logic Agent</h4>
+<p><strong>Role</strong>: Synthesize solutions using reasoning and knowledge</p>
+<p>Logos generates comprehensive solutions by:</p>
+<ul>
+<li>Retrieving relevant context from the knowledge vault via RAG</li>
+<li>Selecting appropriate LoRA adapters for domain expertise</li>
+<li>Synthesizing information from retrieved sources</li>
+<li>Generating well-reasoned, complete solutions</li>
+<li>Citing sources used in the response</li>
+</ul>
+<p><strong>Model</strong>: llama-3.2-8b (balanced reasoning capabilities)</p>
+<h4 id="ethos---truth-agent"><a class="doc-anchor" href="#ethos---truth-agent">§</a>Ethos - Truth Agent</h4>
+<p><strong>Role</strong>: Verify responses are safe, accurate, and feasible</p>
+<p>Ethos ensures quality and safety by:</p>
+<ul>
+<li>Checking for dangerous patterns (veto scenarios)</li>
+<li>Validating hardware constraints</li>
+<li>Fact-checking claims when possible</li>
+<li>Verifying code quality (error handling, best practices)</li>
+<li>Checking thermal limits for intensive operations</li>
+<li>Providing constructive feedback for revisions</li>
+</ul>
+<p><strong>Model</strong>: phi-3-mini-4k (fast verification, good at following instructions)</p>
+<h3 id="agent-trait"><a class="doc-anchor" href="#agent-trait">§</a>Agent Trait</h3>
+<p>All agents implement the <a href="trait.Agent.html" title="trait synesis_core::agents::Agent"><code>Agent</code></a> trait:</p>
+
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="kw">use </span>async_trait::async_trait;
+<span class="kw">use </span>synesis_core::agents::{Agent, AgentInput, AgentOutput};
+<span class="kw">use </span>synesis_core::CoreResult;
+
+<span class="attr">#[async_trait]
+</span><span class="kw">pub trait </span>Agent: Send + Sync {
+    <span class="doccomment">/// Agent's name for logging/display
+    </span><span class="kw">fn </span>name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str;
+
+    <span class="doccomment">/// Agent's role description
+    </span><span class="kw">fn </span>role(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str;
+
+    <span class="doccomment">/// Process a query and return a response
+    </span><span class="kw">async fn </span>process(<span class="kw-2">&amp;</span><span class="self">self</span>, input: AgentInput) -&gt; CoreResult&lt;AgentOutput&gt;;
+
+    <span class="doccomment">/// Check if the agent is ready (model loaded, etc.)
+    </span><span class="kw">fn </span>is_ready(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool;
+
+    <span class="doccomment">/// Get the model this agent uses
+    </span><span class="kw">fn </span>model(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str;
+}</code></pre></div><h3 id="communication-flow"><a class="doc-anchor" href="#communication-flow">§</a>Communication Flow</h3><div class="example-wrap"><pre class="language-text"><code>User Query
+    │
+    ▼
+┌─────────┐
+│ Pathos  │ ← Extracts intent, profiles user, sets verification scope
+└────┬────┘
+     │
+     ▼ (framing + metadata)
+┌─────────┐
+│ Logos   │ ← Retrieves context, synthesizes solution
+└────┬────┘
+     │
+     ▼ (solution + reasoning)
+┌─────────┐
+│ Ethos   │ ← Verifies safety, accuracy, feasibility
+└────┬────┘
+     │
+     ▼ (verdict + vote)
+  Consensus</code></pre></div></div></details><h2 id="reexports" class="section-header">Re-exports<a href="#reexports" class="anchor">§</a></h2><dl class="item-table reexports"><dt id="reexport.EthosAgent"><code>pub use ethos::<a class="struct" href="ethos/struct.EthosAgent.html" title="struct synesis_core::agents::ethos::EthosAgent">EthosAgent</a>;</code></dt><dt id="reexport.LogosAgent"><code>pub use logos::<a class="struct" href="logos/struct.LogosAgent.html" title="struct synesis_core::agents::logos::LogosAgent">LogosAgent</a>;</code></dt><dt id="reexport.PathosAgent"><code>pub use pathos::<a class="struct" href="pathos/struct.PathosAgent.html" title="struct synesis_core::agents::pathos::PathosAgent">PathosAgent</a>;</code></dt></dl><h2 id="modules" class="section-header">Modules<a href="#modules" class="anchor">§</a></h2><dl class="item-table"><dt><a class="mod" href="ethos/index.html" title="mod synesis_core::agents::ethos">ethos</a></dt><dd>Ethos Agent - Verification &amp; Truth</dd><dt><a class="mod" href="logos/index.html" title="mod synesis_core::agents::logos">logos</a></dt><dd>Logos Agent - Logical Reasoning &amp; RAG</dd><dt><a class="mod" href="pathos/index.html" title="mod synesis_core::agents::pathos">pathos</a></dt><dd>Pathos Agent - Intent Extraction &amp; Emotional Intelligence</dd></dl><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><dl class="item-table"><dt><a class="struct" href="struct.AgentConfig.html" title="struct synesis_core::agents::AgentConfig">Agent<wbr>Config</a></dt><dd>Configuration for an agent</dd><dt><a class="struct" href="struct.AgentInput.html" title="struct synesis_core::agents::AgentInput">Agent<wbr>Input</a></dt><dd>Input passed to agents for processing.</dd><dt><a class="struct" href="struct.AgentOutput.html" title="struct synesis_core::agents::AgentOutput">Agent<wbr>Output</a></dt><dd>Output produced by an agent during processing.</dd><dt><a class="struct" href="struct.ConsensusVote.html" title="struct synesis_core::agents::ConsensusVote">Consensus<wbr>Vote</a></dt><dd>Vote from an agent in the consensus process</dd><dt><a class="struct" href="struct.Constraint.html" title="struct synesis_core::agents::Constraint">Constraint</a></dt><dd>Verification constraint from Ethos</dd><dt><a class="struct" href="struct.ContextHints.html" title="struct synesis_core::agents::ContextHints">Context<wbr>Hints</a></dt><dd>Context hints from Pathos</dd><dt><a class="struct" href="struct.Domain.html" title="struct synesis_core::agents::Domain">Domain</a></dt><dd>Domain classification</dd><dt><a class="struct" href="struct.Intent.html" title="struct synesis_core::agents::Intent">Intent</a></dt><dd>Intent structure from Pathos</dd><dt><a class="struct" href="struct.Persona.html" title="struct synesis_core::agents::Persona">Persona</a></dt><dd>User persona profile</dd><dt><a class="struct" href="struct.Source.html" title="struct synesis_core::agents::Source">Source</a></dt><dd>Source reference from Logos</dd><dt><a class="struct" href="struct.VerificationScope.html" title="struct synesis_core::agents::VerificationScope">Verification<wbr>Scope</a></dt><dd>Verification scope from Pathos</dd></dl><h2 id="enums" class="section-header">Enums<a href="#enums" class="anchor">§</a></h2><dl class="item-table"><dt><a class="enum" href="enum.CommunicationStyle.html" title="enum synesis_core::agents::CommunicationStyle">Communication<wbr>Style</a></dt><dd>Communication style preference</dd><dt><a class="enum" href="enum.ConstraintType.html" title="enum synesis_core::agents::ConstraintType">Constraint<wbr>Type</a></dt><dd>Type of constraint</dd><dt><a class="enum" href="enum.ExpertiseLevel.html" title="enum synesis_core::agents::ExpertiseLevel">Expertise<wbr>Level</a></dt><dd>User expertise level</dd><dt><a class="enum" href="enum.Priority.html" title="enum synesis_core::agents::Priority">Priority</a></dt><dd>Priority preference</dd><dt><a class="enum" href="enum.QueryType.html" title="enum synesis_core::agents::QueryType">Query<wbr>Type</a></dt><dd>Type of query</dd><dt><a class="enum" href="enum.Severity.html" title="enum synesis_core::agents::Severity">Severity</a></dt><dd>Severity level</dd><dt><a class="enum" href="enum.SourceType.html" title="enum synesis_core::agents::SourceType">Source<wbr>Type</a></dt><dd>Type of source</dd><dt><a class="enum" href="enum.Urgency.html" title="enum synesis_core::agents::Urgency">Urgency</a></dt><dd>Urgency level</dd><dt><a class="enum" href="enum.Verdict.html" title="enum synesis_core::agents::Verdict">Verdict</a></dt><dd>Ethos verdict</dd></dl><h2 id="traits" class="section-header">Traits<a href="#traits" class="anchor">§</a></h2><dl class="item-table"><dt><a class="trait" href="trait.Agent.html" title="trait synesis_core::agents::Agent">Agent</a></dt><dd>Core agent trait that all council members must implement.</dd></dl><h2 id="types" class="section-header">Type Aliases<a href="#types" class="anchor">§</a></h2><dl class="item-table"><dt><a class="type" href="type.AgentResponse.html" title="type synesis_core::agents::AgentResponse">Agent<wbr>Response</a></dt><dd>Legacy alias for backward compatibility</dd></dl></section></div></main></body></html>

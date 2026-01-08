@@ -1,0 +1,80 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Core agent trait that all council members must implement."><title>Agent in synesis_core::agents - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-ca0dd0c4.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="synesis_core" data-themes="" data-resource-suffix="" data-rustdoc-version="1.92.0 (ded5c06cf 2025-12-08)" data-channel="1.92.0" data-search-js="search-d69d8955.js" data-stringdex-js="stringdex-c3e638e9.js" data-settings-js="settings-c38705f0.js" ><script src="../../static.files/storage-e2aeef58.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../static.files/main-ce535bd0.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-263c88ec.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc trait"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><rustdoc-topbar><h2><a href="#">Agent</a></h2></rustdoc-topbar><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../synesis_core/index.html">synesis_<wbr>core</a><span class="version">0.1.0</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Agent</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#lifecycle" title="Lifecycle">Lifecycle</a></li><li><a href="#example" title="Example">Example</a></li></ul><h3><a href="#required-methods">Required Methods</a></h3><ul class="block"><li><a href="#tymethod.is_ready" title="is_ready">is_ready</a></li><li><a href="#tymethod.model" title="model">model</a></li><li><a href="#tymethod.name" title="name">name</a></li><li><a href="#tymethod.process" title="process">process</a></li><li><a href="#tymethod.role" title="role">role</a></li></ul><h3><a href="#implementors">Implementors</a></h3></section><div id="rustdoc-modnav"><h2><a href="index.html">In synesis_<wbr>core::<wbr>agents</a></h2></div></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><div class="width-limiter"><section id="main-content" class="content"><div class="main-heading"><div class="rustdoc-breadcrumbs"><a href="../index.html">synesis_core</a>::<wbr><a href="index.html">agents</a></div><h1>Trait <span class="trait">Agent</span>&nbsp;<button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../../src/synesis_core/agents/mod.rs.html#160-200">Source</a> </span></div><pre class="rust item-decl"><code>pub trait Agent: <a class="trait" href="https://doc.rust-lang.org/1.92.0/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> + <a class="trait" href="https://doc.rust-lang.org/1.92.0/core/marker/trait.Sync.html" title="trait core::marker::Sync">Sync</a> {
+    // Required methods
+    fn <a href="#tymethod.name" class="fn">name</a>(&amp;self) -&gt; &amp;<a class="primitive" href="https://doc.rust-lang.org/1.92.0/std/primitive.str.html">str</a>;
+<span class="item-spacer"></span>    fn <a href="#tymethod.role" class="fn">role</a>(&amp;self) -&gt; &amp;<a class="primitive" href="https://doc.rust-lang.org/1.92.0/std/primitive.str.html">str</a>;
+<span class="item-spacer"></span>    fn <a href="#tymethod.process" class="fn">process</a>&lt;'life0, 'async_trait&gt;(
+        &amp;'life0 self,
+        input: <a class="struct" href="struct.AgentInput.html" title="struct synesis_core::agents::AgentInput">AgentInput</a>,
+    ) -&gt; <a class="struct" href="https://doc.rust-lang.org/1.92.0/core/pin/struct.Pin.html" title="struct core::pin::Pin">Pin</a>&lt;<a class="struct" href="https://doc.rust-lang.org/1.92.0/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;dyn <a class="trait" href="https://doc.rust-lang.org/1.92.0/core/future/future/trait.Future.html" title="trait core::future::future::Future">Future</a>&lt;Output = <a class="type" href="../error/type.Result.html" title="type synesis_core::error::Result">CoreResult</a>&lt;<a class="struct" href="struct.AgentOutput.html" title="struct synesis_core::agents::AgentOutput">AgentOutput</a>&gt;&gt; + <a class="trait" href="https://doc.rust-lang.org/1.92.0/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> + 'async_trait&gt;&gt;
+       <span class="where">where Self: 'async_trait,
+             'life0: 'async_trait</span>;
+<span class="item-spacer"></span>    fn <a href="#tymethod.is_ready" class="fn">is_ready</a>(&amp;self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/1.92.0/std/primitive.bool.html">bool</a>;
+<span class="item-spacer"></span>    fn <a href="#tymethod.model" class="fn">model</a>(&amp;self) -&gt; &amp;<a class="primitive" href="https://doc.rust-lang.org/1.92.0/std/primitive.str.html">str</a>;
+}</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Core agent trait that all council members must implement.</p>
+<p>The agent trait defines the interface that Pathos, Logos, and Ethos
+all implement to participate in the consensus process.</p>
+<h2 id="lifecycle"><a class="doc-anchor" href="#lifecycle">§</a>Lifecycle</h2>
+<ol>
+<li>Agent is created with <a href="struct.AgentConfig.html" title="struct synesis_core::agents::AgentConfig"><code>AgentConfig</code></a></li>
+<li>Models are loaded during agent creation</li>
+<li><a href="trait.Agent.html#tymethod.process" title="method synesis_core::agents::Agent::process"><code>Agent::process()</code></a> is called for each query</li>
+<li><a href="trait.Agent.html#tymethod.name" title="method synesis_core::agents::Agent::name"><code>Agent::name()</code></a> and <a href="trait.Agent.html#tymethod.role" title="method synesis_core::agents::Agent::role"><code>Agent::role()</code></a> provide metadata</li>
+</ol>
+<h2 id="example"><a class="doc-anchor" href="#example">§</a>Example</h2>
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="kw">use </span>synesis_core::agents::{Agent, AgentInput, AgentOutput};
+<span class="kw">use </span>synesis_core::CoreResult;
+
+<span class="kw">struct </span>MyAgent;
+
+<span class="attr">#[async_trait::async_trait]
+</span><span class="kw">impl </span>Agent <span class="kw">for </span>MyAgent {
+    <span class="kw">fn </span>name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str {
+        <span class="string">"MyAgent"
+    </span>}
+
+    <span class="kw">fn </span>role(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str {
+        <span class="string">"Custom agent implementation"
+    </span>}
+
+    <span class="kw">async fn </span>process(<span class="kw-2">&amp;</span><span class="self">self</span>, input: AgentInput) -&gt; CoreResult&lt;AgentOutput&gt; {
+        <span class="comment">// Process the input...
+        </span><span class="prelude-val">Ok</span>(AgentOutput::new(<span class="string">"MyAgent"</span>, <span class="string">"Response"</span>.to_string(), <span class="number">0.9</span>))
+    }
+
+    <span class="kw">fn </span>is_ready(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="bool-val">true
+    </span>}
+
+    <span class="kw">fn </span>model(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str {
+        <span class="string">"my-model"
+    </span>}
+}</code></pre></div></div></details><h2 id="required-methods" class="section-header">Required Methods<a href="#required-methods" class="anchor">§</a></h2><div class="methods"><details class="toggle method-toggle" open><summary><section id="tymethod.name" class="method"><a class="src rightside" href="../../src/synesis_core/agents/mod.rs.html#164">Source</a><h4 class="code-header">fn <a href="#tymethod.name" class="fn">name</a>(&amp;self) -&gt; &amp;<a class="primitive" href="https://doc.rust-lang.org/1.92.0/std/primitive.str.html">str</a></h4></section></summary><div class="docblock"><p>Returns the agent’s name for logging and display purposes.</p>
+<p>This should be a short, memorable identifier like “Pathos”, “Logos”, or “Ethos”.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.role" class="method"><a class="src rightside" href="../../src/synesis_core/agents/mod.rs.html#169">Source</a><h4 class="code-header">fn <a href="#tymethod.role" class="fn">role</a>(&amp;self) -&gt; &amp;<a class="primitive" href="https://doc.rust-lang.org/1.92.0/std/primitive.str.html">str</a></h4></section></summary><div class="docblock"><p>Returns a brief description of the agent’s role.</p>
+<p>Example: “Intent extraction and emotional intelligence” for Pathos.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.process" class="method"><a class="src rightside" href="../../src/synesis_core/agents/mod.rs.html#188">Source</a><h4 class="code-header">fn <a href="#tymethod.process" class="fn">process</a>&lt;'life0, 'async_trait&gt;(
+    &amp;'life0 self,
+    input: <a class="struct" href="struct.AgentInput.html" title="struct synesis_core::agents::AgentInput">AgentInput</a>,
+) -&gt; <a class="struct" href="https://doc.rust-lang.org/1.92.0/core/pin/struct.Pin.html" title="struct core::pin::Pin">Pin</a>&lt;<a class="struct" href="https://doc.rust-lang.org/1.92.0/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;dyn <a class="trait" href="https://doc.rust-lang.org/1.92.0/core/future/future/trait.Future.html" title="trait core::future::future::Future">Future</a>&lt;Output = <a class="type" href="../error/type.Result.html" title="type synesis_core::error::Result">CoreResult</a>&lt;<a class="struct" href="struct.AgentOutput.html" title="struct synesis_core::agents::AgentOutput">AgentOutput</a>&gt;&gt; + <a class="trait" href="https://doc.rust-lang.org/1.92.0/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> + 'async_trait&gt;&gt;<div class="where">where
+    Self: 'async_trait,
+    'life0: 'async_trait,</div></h4></section></summary><div class="docblock"><p>Process an input manifest and generate a response.</p>
+<p>This is the core method where agents perform their specialized processing.
+Each agent receives the same input but produces different outputs based on
+their role:</p>
+<ul>
+<li><strong>Pathos</strong>: Extracts intent, frames the query</li>
+<li><strong>Logos</strong>: Generates solutions, retrieves knowledge</li>
+<li><strong>Ethos</strong>: Verifies safety, accuracy, feasibility</li>
+</ul>
+<h5 id="arguments"><a class="doc-anchor" href="#arguments">§</a>Arguments</h5>
+<ul>
+<li><code>input</code> - The query manifest with context from previous agents</li>
+</ul>
+<h5 id="returns"><a class="doc-anchor" href="#returns">§</a>Returns</h5>
+<p>An <a href="struct.AgentOutput.html" title="struct synesis_core::agents::AgentOutput"><code>AgentOutput</code></a> containing the response, confidence, and optional vote.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.is_ready" class="method"><a class="src rightside" href="../../src/synesis_core/agents/mod.rs.html#194">Source</a><h4 class="code-header">fn <a href="#tymethod.is_ready" class="fn">is_ready</a>(&amp;self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/1.92.0/std/primitive.bool.html">bool</a></h4></section></summary><div class="docblock"><p>Check if the agent is ready to process queries.</p>
+<p>Returns <code>true</code> if the agent has been initialized and has loaded its model.
+Returns <code>false</code> if the agent still needs initialization.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.model" class="method"><a class="src rightside" href="../../src/synesis_core/agents/mod.rs.html#199">Source</a><h4 class="code-header">fn <a href="#tymethod.model" class="fn">model</a>(&amp;self) -&gt; &amp;<a class="primitive" href="https://doc.rust-lang.org/1.92.0/std/primitive.str.html">str</a></h4></section></summary><div class="docblock"><p>Returns the identifier of the model this agent uses.</p>
+<p>Examples: “phi-3-mini”, “llama-3.2-8b”, “mistral-7b-instruct”</p>
+</div></details></div><h2 id="implementors" class="section-header">Implementors<a href="#implementors" class="anchor">§</a></h2><div id="implementors-list"><section id="impl-Agent-for-EthosAgent" class="impl"><a class="src rightside" href="../../src/synesis_core/agents/ethos.rs.html#650-713">Source</a><a href="#impl-Agent-for-EthosAgent" class="anchor">§</a><h3 class="code-header">impl <a class="trait" href="trait.Agent.html" title="trait synesis_core::agents::Agent">Agent</a> for <a class="struct" href="ethos/struct.EthosAgent.html" title="struct synesis_core::agents::ethos::EthosAgent">EthosAgent</a></h3></section><section id="impl-Agent-for-LogosAgent" class="impl"><a class="src rightside" href="../../src/synesis_core/agents/logos.rs.html#415-508">Source</a><a href="#impl-Agent-for-LogosAgent" class="anchor">§</a><h3 class="code-header">impl <a class="trait" href="trait.Agent.html" title="trait synesis_core::agents::Agent">Agent</a> for <a class="struct" href="logos/struct.LogosAgent.html" title="struct synesis_core::agents::logos::LogosAgent">LogosAgent</a></h3></section><section id="impl-Agent-for-PathosAgent" class="impl"><a class="src rightside" href="../../src/synesis_core/agents/pathos.rs.html#507-576">Source</a><a href="#impl-Agent-for-PathosAgent" class="anchor">§</a><h3 class="code-header">impl <a class="trait" href="trait.Agent.html" title="trait synesis_core::agents::Agent">Agent</a> for <a class="struct" href="pathos/struct.PathosAgent.html" title="struct synesis_core::agents::pathos::PathosAgent">PathosAgent</a></h3></section></div><script src="../../trait.impl/synesis_core/agents/trait.Agent.js" async></script></section></div></main></body></html>

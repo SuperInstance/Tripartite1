@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["collect_amd_gpu_metrics","collect_cpu_usage","collect_device_vitals","collect_disk_usage","collect_gpu_metrics","collect_memory_usage","collect_nvidia_gpu_metrics","read_cpu_usage_linux","read_disk_usage_generic","read_disk_usage_linux","read_memory_usage_linux"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["cosine_similarity"],"struct":["ChunkRecord","ChunkResult","Document","KnowledgeVault","VaultStats"]};

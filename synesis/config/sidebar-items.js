@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["default_data_dir","default_endpoint","default_log_level","default_max_local_tokens","default_max_rounds","default_max_tokens","default_temperature","default_threshold","default_true","load_config","save_config"],"struct":["AgentConfig","AgentsConfig","CloudConfig","Config","ConsensusConfig","ConsensusWeights","CustomPattern","PrivacyConfig"]};

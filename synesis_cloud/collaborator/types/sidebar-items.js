@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["CollaboratorRole","HandoverState"],"struct":["GuestSession","Handover","HandoverIncentive","HandoverRequest","Invite","InviteRequest"]};

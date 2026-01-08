@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["FileChange"],"fn":["compute_checksum","should_process_path","should_skip_directory"],"struct":["FileChecksum","FileWatcher","WatchConfig"]};

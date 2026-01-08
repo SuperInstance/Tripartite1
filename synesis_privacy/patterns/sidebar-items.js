@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["PatternType"],"static":["COMPILED_BUILTIN_PATTERNS"],"struct":["BuiltinPatterns","Pattern","PatternMatch","PatternSet"]};

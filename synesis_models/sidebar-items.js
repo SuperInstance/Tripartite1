@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ModelError","Quantization"],"mod":["downloader","hardware","inference","manifest","registry"],"type":["ModelResult"]};

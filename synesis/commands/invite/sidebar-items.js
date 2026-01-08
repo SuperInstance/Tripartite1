@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["InviteCommands"],"fn":["create_invite","list_invites","revoke_invite","run"],"struct":["CreateArgs","RevokeArgs"]};

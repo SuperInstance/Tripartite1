@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["CloudModel","Tone","Verbosity"],"struct":["EscalationContext","EscalationRequest","EscalationResponse","KnowledgeChunk","Message","TokenUsage","UserPreferences"]};

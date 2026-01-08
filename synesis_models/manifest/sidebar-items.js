@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["format_bytes"],"mod":["profiles"],"struct":["AgentRecommendations","HardwareManifest","ModelRecommendation"]};

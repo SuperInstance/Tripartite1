@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["IndexCommand"],"fn":["calculate_hash"],"struct":["DocumentIndexer","IndexResult","IndexerConfig","IndexerHandle","LegacyDocumentIndexer"]};

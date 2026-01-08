@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ModelStatus"],"struct":["ModelInfo","ModelRegistry","QuantizedVariant","RecommendedModels"]};

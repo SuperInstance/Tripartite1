@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["all","jetson_orin_nano","minimal","performance","select_for_hardware","standard","ultra"]};

@@ -1,0 +1,9 @@
+(function() {
+    var implementors = Object.fromEntries([["synesis",[["impl Subcommand for <a class=\"enum\" href=\"synesis/commands/cloud/enum.CloudCommands.html\" title=\"enum synesis::commands::cloud::CloudCommands\">CloudCommands</a>"],["impl Subcommand for <a class=\"enum\" href=\"synesis/commands/config/enum.ConfigCommands.html\" title=\"enum synesis::commands::config::ConfigCommands\">ConfigCommands</a>"],["impl Subcommand for <a class=\"enum\" href=\"synesis/commands/invite/enum.InviteCommands.html\" title=\"enum synesis::commands::invite::InviteCommands\">InviteCommands</a>"],["impl Subcommand for <a class=\"enum\" href=\"synesis/commands/knowledge/enum.KnowledgeCommands.html\" title=\"enum synesis::commands::knowledge::KnowledgeCommands\">KnowledgeCommands</a>"],["impl Subcommand for <a class=\"enum\" href=\"synesis/commands/manifest/enum.ManifestCommands.html\" title=\"enum synesis::commands::manifest::ManifestCommands\">ManifestCommands</a>"],["impl Subcommand for <a class=\"enum\" href=\"synesis/commands/metrics/enum.MetricsCommands.html\" title=\"enum synesis::commands::metrics::MetricsCommands\">MetricsCommands</a>"],["impl Subcommand for <a class=\"enum\" href=\"synesis/commands/model/enum.ModelCommands.html\" title=\"enum synesis::commands::model::ModelCommands\">ModelCommands</a>"],["impl Subcommand for <a class=\"enum\" href=\"synesis/enum.Commands.html\" title=\"enum synesis::Commands\">Commands</a>"]]]]);
+    if (window.register_implementors) {
+        window.register_implementors(implementors);
+    } else {
+        window.pending_implementors = implementors;
+    }
+})()
+//{"start":57,"fragment_lengths":[1389]}

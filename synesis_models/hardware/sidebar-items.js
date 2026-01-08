@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["GpuVendor"],"fn":["format_bytes"],"struct":["CpuInfo","DiskInfo","GpuInfo","HardwareDetector","HardwareInfo","PlatformInfo"]};

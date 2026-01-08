@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["CommunicationStyle","ExpertiseLevel","Priority","QueryType"],"struct":["ContextHints","IntentDetails","ModelPlaceholder","PathosAgent","PathosIntent","PersonaDetails","VerificationScope"]};

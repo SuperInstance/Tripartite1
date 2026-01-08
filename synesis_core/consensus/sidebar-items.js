@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ConsensusResult","Verdict"],"struct":["AgentWeights","ConsensusConfig","ConsensusEngine","ConsensusOutcome","RedactionStats","Votes"]};

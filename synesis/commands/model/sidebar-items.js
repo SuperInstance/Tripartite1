@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["MODELS"],"enum":["ModelCommands","ModelType"],"fn":["download_model","get_models_dir","list_models","remove_model","run","show_model_info","verify_model","verify_model_file"],"struct":["DownloadArgs","InfoArgs","ListArgs","ModelInfo","RemoveArgs","VerifyArgs"]};

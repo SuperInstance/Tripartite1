@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["DownloadPhase","ModelSource"],"mod":["known_models"],"struct":["DownloadProgress","DownloadSpec","Downloader"],"type":["ProgressCallback"]};
