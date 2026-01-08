@@ -2,6 +2,36 @@
 //!
 //! Defines patterns for detecting sensitive information in text.
 //! Includes built-in patterns for common PII types and support for custom patterns.
+//!
+//! # Pattern Priority System
+//!
+//! Patterns are assigned priorities to ensure proper detection order:
+//! - **Priority 100**: Private keys (most critical, very specific)
+//! - **Priority 95**: SSNs (critical PII)
+//! - **Priority 90-94**: API keys and secrets (GitHub tokens, AWS keys, Stripe keys)
+//! - **Priority 85-89**: Generic secrets and credentials
+//! - **Priority 75-84**: URLs with tokens, emails
+//! - **Priority 65-70**: Phone numbers
+//! - **Priority 60**: IP addresses
+//! - **Priority 50**: File paths
+//!
+//! Higher priority patterns are checked first and take precedence over lower priority patterns.
+//! This prevents overlapping matches (e.g., an email in a URL should match the URL pattern first).
+//!
+//! # Performance
+//!
+//! Patterns are compiled once at startup using `once_cell::sync::Lazy` and cached globally.
+//! This provides:
+//! - Zero compilation cost after first use
+//! - Memory-efficient sharing (Arc<Regex> for all Pattern instances)
+//! - Thread-safe access without locking
+//!
+//! # Pattern Matching Algorithm
+//!
+//! 1. Find all matches across all enabled patterns
+//! 2. Sort matches by start position
+//! 3. Filter overlapping matches (keep higher priority)
+//! 4. Return non-overlapping matches in order
 
 use once_cell::sync::Lazy;
 use regex::Regex;
@@ -9,6 +39,53 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 use crate::PrivacyResult;
+
+// Priority constants for built-in patterns
+
+/// Highest priority: Private keys (very specific, critical)
+const PRIORITY_PRIVATE_KEY: u8 = 100;
+
+/// SSNs (critical PII, specific format)
+const PRIORITY_SSN: u8 = 95;
+
+/// Stripe/OpenAI keys (sk- prefix)
+const PRIORITY_API_KEY_SK: u8 = 93;
+
+/// GitHub tokens (specific format)
+const PRIORITY_API_KEY_GITHUB: u8 = 92;
+
+/// Slack/GitHub tokens (context-based)
+const PRIORITY_TOKEN_GENERIC: u8 = 90;
+
+/// Credit cards (specific format)
+const PRIORITY_CREDIT_CARD: u8 = 90;
+
+/// AWS keys (specific prefix)
+const PRIORITY_AWS_KEY: u8 = 90;
+
+/// Generic API keys (context-based)
+const PRIORITY_API_KEY_GENERIC: u8 = 85;
+
+/// Passwords in context
+const PRIORITY_PASSWORD: u8 = 85;
+
+/// Email addresses
+const PRIORITY_EMAIL: u8 = 80;
+
+/// URLs with tokens
+const PRIORITY_URL_TOKEN: u8 = 75;
+
+/// US phone numbers
+const PRIORITY_PHONE_US: u8 = 70;
+
+/// International phone numbers
+const PRIORITY_PHONE_INTL: u8 = 65;
+
+/// IP addresses (v4 and v6)
+const PRIORITY_IP: u8 = 60;
+
+/// File paths (least specific)
+const PRIORITY_PATH: u8 = 50;
 
 /// Cached compiled built-in patterns
 /// Compiled once at startup and reused for all PatternSet instances
@@ -228,6 +305,9 @@ impl BuiltinPatterns {
     }
 
     /// Email pattern
+    ///
+    /// Detects standard email addresses (user@domain.tld).
+    /// Does not detect IP addresses in email format or obfuscated emails.
     pub fn email() -> Option<Pattern> {
         Pattern::new(
             PatternType::Email,
@@ -235,10 +315,15 @@ impl BuiltinPatterns {
             r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}",
         )
         .ok()
-        .map(|p| p.with_priority(80))
+        .map(|p| p.with_priority(PRIORITY_EMAIL))
     }
 
     /// US phone number
+    ///
+    /// Detects US/Canada phone numbers in various formats:
+    /// - 555-123-4567
+    /// - (555) 123-4567
+    /// - +1 555 123 4567
     pub fn phone_us() -> Option<Pattern> {
         Pattern::new(
             PatternType::Phone,
@@ -246,17 +331,26 @@ impl BuiltinPatterns {
             r"(?:\+1[-.\s]?)?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}",
         )
         .ok()
-        .map(|p| p.with_priority(70))
+        .map(|p| p.with_priority(PRIORITY_PHONE_US))
     }
 
     /// International phone number
+    ///
+    /// Detects international phone numbers (E.164 format):
+    /// - +44 20 7946 0958
+    /// - +12125551234
     pub fn phone_international() -> Option<Pattern> {
         Pattern::new(PatternType::Phone, "phone_intl", r"\+[1-9][0-9]{1,14}")
             .ok()
-            .map(|p| p.with_priority(65))
+            .map(|p| p.with_priority(PRIORITY_PHONE_INTL))
     }
 
     /// Social Security Number
+    ///
+    /// Detects US SSNs in various formats:
+    /// - 123-45-6789
+    /// - 123 45 6789
+    /// - 123456789
     pub fn ssn() -> Option<Pattern> {
         Pattern::new(
             PatternType::SSN,
@@ -264,10 +358,16 @@ impl BuiltinPatterns {
             r"\b[0-9]{3}[-\s]?[0-9]{2}[-\s]?[0-9]{4}\b",
         )
         .ok()
-        .map(|p| p.with_priority(95))
+        .map(|p| p.with_priority(PRIORITY_SSN))
     }
 
     /// Credit card number (Luhn-valid patterns)
+    ///
+    /// Detects major credit card brands:
+    /// - Visa: starts with 4
+    /// - MasterCard: starts with 5
+    /// - American Express: starts with 34 or 37
+    /// - Discover: starts with 6011 or 65
     pub fn credit_card() -> Option<Pattern> {
         Pattern::new(
             PatternType::CreditCard,
@@ -275,10 +375,15 @@ impl BuiltinPatterns {
             r"\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|6(?:011|5[0-9]{2})[0-9]{12})\b",
         )
         .ok()
-        .map(|p| p.with_priority(90))
+        .map(|p| p.with_priority(PRIORITY_CREDIT_CARD))
     }
 
     /// Generic API key pattern
+    ///
+    /// Detects API keys in configuration context:
+    /// - api_key=XXXXX
+    /// - APIKEY: XXXXX
+    /// - api-token=XXXXX
     pub fn api_key_generic() -> Option<Pattern> {
         Pattern::new(
             PatternType::ApiKey,
@@ -286,10 +391,15 @@ impl BuiltinPatterns {
             r#"(?i)(?:api[_-]?key|apikey|api[_-]?token)[=:\s]+['\''"]?([a-zA-Z0-9_-]{20,})['\''"]?"#,
         )
         .ok()
-        .map(|p| p.with_priority(85))
+        .map(|p| p.with_priority(PRIORITY_API_KEY_GENERIC))
     }
 
     /// AWS Access Key ID
+    ///
+    /// Detects AWS access key IDs with specific prefixes:
+    /// - AKIA (standard IAM user)
+    /// - A3T (AWS root account)
+    /// - AGPA, AIDA, AROA, AIPA, ANPA, ANVA, ASIA (various AWS services)
     pub fn aws_access_key() -> Option<Pattern> {
         Pattern::new(
             PatternType::AwsKey,
@@ -297,10 +407,13 @@ impl BuiltinPatterns {
             r"(?:A3T[A-Z0-9]|AKIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA|ASIA)[A-Z0-9]{16}",
         )
         .ok()
-        .map(|p| p.with_priority(90))
+        .map(|p| p.with_priority(PRIORITY_AWS_KEY))
     }
 
     /// AWS Secret Key
+    ///
+    /// Detects AWS secret access keys in configuration context.
+    /// These are 40-character base64-like strings.
     pub fn aws_secret_key() -> Option<Pattern> {
         Pattern::new(
             PatternType::AwsKey,
@@ -308,10 +421,12 @@ impl BuiltinPatterns {
             r#"(?i)(?:aws[_-]?secret[_-]?(?:access[_-]?)?key)[=:\s]+['\''"]?([A-Za-z0-9/+=]{40})['\''"]?"#,
         )
         .ok()
-        .map(|p| p.with_priority(90))
+        .map(|p| p.with_priority(PRIORITY_AWS_KEY))
     }
 
     /// IPv4 address
+    ///
+    /// Detects standard IPv4 addresses (0.0.0.0 - 255.255.255.255).
     pub fn ipv4() -> Option<Pattern> {
         Pattern::new(
             PatternType::IpAddress,
@@ -319,10 +434,14 @@ impl BuiltinPatterns {
             r"\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b",
         )
         .ok()
-        .map(|p| p.with_priority(60))
+        .map(|p| p.with_priority(PRIORITY_IP))
     }
 
     /// IPv6 address
+    ///
+    /// Detects IPv6 addresses in various formats:
+    /// - Full: 2001:0db8:85a3:0000:0000:8a2e:0370:7334
+    /// - Compressed: 2001:db8:85a3::8a2e:370:7334
     pub fn ipv6() -> Option<Pattern> {
         Pattern::new(
             PatternType::IpAddress,
@@ -330,10 +449,15 @@ impl BuiltinPatterns {
             r"(?i)(?:[0-9a-f]{1,4}:){7}[0-9a-f]{1,4}|(?:[0-9a-f]{1,4}:){1,7}:|(?:[0-9a-f]{1,4}:){1,6}:[0-9a-f]{1,4}|(?:[0-9a-f]{1,4}:){1,5}(?::[0-9a-f]{1,4}){1,2}|(?:[0-9a-f]{1,4}:){1,4}(?::[0-9a-f]{1,4}){1,3}|(?:[0-9a-f]{1,4}:){1,3}(?::[0-9a-f]{1,4}){1,4}|(?:[0-9a-f]{1,4}:){1,2}(?::[0-9a-f]{1,4}){1,5}|[0-9a-f]{1,4}:(?::[0-9a-f]{1,4}){1,6}|:(?::[0-9a-f]{1,4}){1,7}|::",
         )
         .ok()
-        .map(|p| p.with_priority(60))
+        .map(|p| p.with_priority(PRIORITY_IP))
     }
 
     /// Unix file path
+    ///
+    /// Detects Unix-style absolute paths under common directories:
+    /// - /home/user/...
+    /// - /var/log/...
+    /// - /etc/config/...
     pub fn file_path_unix() -> Option<Pattern> {
         Pattern::new(
             PatternType::FilePath,
@@ -341,10 +465,14 @@ impl BuiltinPatterns {
             r"(?:/(?:home|users|var|etc|opt|usr)/[a-zA-Z0-9._/-]+)",
         )
         .ok()
-        .map(|p| p.with_priority(50))
+        .map(|p| p.with_priority(PRIORITY_PATH))
     }
 
     /// Windows file path
+    ///
+    /// Detects Windows file paths:
+    /// - C:\Users\...
+    /// - D:\Projects\...
     pub fn file_path_windows() -> Option<Pattern> {
         Pattern::new(
             PatternType::FilePath,
@@ -352,10 +480,15 @@ impl BuiltinPatterns {
             r#"(?i)(?:[a-z]:\\(?:[^\\/:*?"<>|\r\n]+\\)*[^\\/:*?"<>|\r\n]*)"#,
         )
         .ok()
-        .map(|p| p.with_priority(50))
+        .map(|p| p.with_priority(PRIORITY_PATH))
     }
 
     /// URL with token/key parameter
+    ///
+    /// Detects URLs containing sensitive parameters:
+    /// - ?token=XXX
+    /// - &api_key=YYY
+    /// - ?secret=ZZZ
     pub fn url_with_token() -> Option<Pattern> {
         Pattern::new(
             PatternType::SensitiveUrl,
@@ -363,10 +496,14 @@ impl BuiltinPatterns {
             r"(?i)https?://[^\s]+[?&](?:token|key|api_key|apikey|secret|password|auth)=[^\s&]+",
         )
         .ok()
-        .map(|p| p.with_priority(75))
+        .map(|p| p.with_priority(PRIORITY_URL_TOKEN))
     }
 
     /// Password in context
+    ///
+    /// Detects passwords in configuration context:
+    /// - password=secret123
+    /// - "pwd": "myvalue"
     pub fn password_in_context() -> Option<Pattern> {
         Pattern::new(
             PatternType::GenericSecret,
@@ -374,10 +511,15 @@ impl BuiltinPatterns {
             r#"(?i)(?:password|passwd|pwd)[=:\s]+['\''"]?([^\s'\''"]{4,})['\''"]?"#,
         )
         .ok()
-        .map(|p| p.with_priority(85))
+        .map(|p| p.with_priority(PRIORITY_PASSWORD))
     }
 
     /// Private key (PEM format)
+    ///
+    /// Detects PEM-formatted private key headers:
+    /// - -----BEGIN RSA PRIVATE KEY-----
+    /// - -----BEGIN EC PRIVATE KEY-----
+    /// - -----BEGIN OPENSSH PRIVATE KEY-----
     pub fn private_key() -> Option<Pattern> {
         Pattern::new(
             PatternType::GenericSecret,
@@ -385,10 +527,12 @@ impl BuiltinPatterns {
             r#"-----BEGIN[A-Z\s]*PRIVATE KEY-----"#,
         )
         .ok()
-        .map(|p| p.with_priority(100))
+        .map(|p| p.with_priority(PRIORITY_PRIVATE_KEY))
     }
 
     /// GitHub personal access token
+    ///
+    /// Detects GitHub tokens in configuration context.
     pub fn github_token() -> Option<Pattern> {
         Pattern::new(
             PatternType::ApiKey,
@@ -396,10 +540,17 @@ impl BuiltinPatterns {
             r#"(?i)github[_-]?token[=:\s]+['"]?([a-zA-Z0-9_-]{36,})['"]?"#,
         )
         .ok()
-        .map(|p| p.with_priority(90))
+        .map(|p| p.with_priority(PRIORITY_TOKEN_GENERIC))
     }
 
     /// GitHub token format (ghp_*, gho_*, ghu_*, ghs_*, ghr_*)
+    ///
+    /// Detects GitHub token formats by prefix:
+    /// - ghp_: Personal access token
+    /// - gho_: OAuth token
+    /// - ghu_: User token
+    /// - ghs_: Server token
+    /// - ghr_: Refresh token
     pub fn api_key_github() -> Option<Pattern> {
         Pattern::new(
             PatternType::ApiKey,
@@ -407,10 +558,13 @@ impl BuiltinPatterns {
             r"(?i)(?:ghp_|gho_|ghu_|ghs_|ghr_)[a-zA-Z0-9]{36}",
         )
         .ok()
-        .map(|p| p.with_priority(92))
+        .map(|p| p.with_priority(PRIORITY_API_KEY_GITHUB))
     }
 
     /// Slack token
+    ///
+    /// Detects Slack tokens in configuration context.
+    /// Slack tokens start with xoxb- or xoxp-.
     pub fn slack_token() -> Option<Pattern> {
         Pattern::new(
             PatternType::ApiKey,
@@ -418,10 +572,14 @@ impl BuiltinPatterns {
             r#"(?i)slack[_-]?token[=:\s]+['"]?([a-zA-Z0-9_-]{24,})['"]?"#,
         )
         .ok()
-        .map(|p| p.with_priority(90))
+        .map(|p| p.with_priority(PRIORITY_TOKEN_GENERIC))
     }
 
     /// API key with sk- prefix (Stripe, OpenAI, etc.)
+    ///
+    /// Detects API keys starting with sk- or sk_:
+    /// - Stripe: sk_test_...
+    /// - OpenAI: sk-...
     pub fn api_key_sk() -> Option<Pattern> {
         Pattern::new(
             PatternType::ApiKey,
@@ -429,7 +587,7 @@ impl BuiltinPatterns {
             r#"\bsk[_-][a-zA-Z0-9_-]{20,}\b"#,
         )
         .ok()
-        .map(|p| p.with_priority(93))
+        .map(|p| p.with_priority(PRIORITY_API_KEY_SK))
     }
 }
 

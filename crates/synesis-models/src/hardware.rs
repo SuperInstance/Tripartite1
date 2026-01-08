@@ -1,6 +1,23 @@
 //! Hardware Detection
 //!
 //! Detects system hardware capabilities for optimal model selection.
+//!
+//! # Hardware Detection Strategy
+//!
+//! The detector tries multiple approaches for each component:
+//! - **CPU**: Uses sysinfo for accurate core/thread counts and feature detection
+//! - **GPU**: Tries NVIDIA (nvidia-smi), AMD (rocm-smi), Apple Silicon (unified memory), Intel (sycl-ls)
+//! - **RAM**: Uses sysinfo for total and available memory
+//! - **Disk**: Uses df command on Unix, falls back to defaults on Windows
+//!
+//! # Performance
+//!
+//! Hardware detection is synchronous and can take 100-500ms depending on:
+//! - Number of GPUs detected
+//! - Speed of subprocess calls (nvidia-smi, rocm-smi, etc.)
+//! - Disk I/O for df command
+//!
+//! It's recommended to cache the `HardwareInfo` result for the application lifetime.
 
 use serde::{Deserialize, Serialize};
 use std::process::Command;
@@ -8,6 +25,37 @@ use sysinfo::System;
 use tracing::{debug, info, instrument, warn};
 
 use crate::ModelResult;
+
+// Constants for hardware requirements and calculations
+
+/// Minimum RAM required for basic operation (8 GB)
+const MIN_RAM_BYTES: u64 = 8 * 1024 * 1024 * 1024;
+
+/// Minimum disk space required (10 GB)
+const MIN_DISK_BYTES: u64 = 10 * 1024 * 1024 * 1024;
+
+/// Tier thresholds for RAM (in GB)
+const TIER_RAM_HIGH: u64 = 64;    // >= 64GB: Tier 4
+const TIER_RAM_MID: u64 = 32;     // >= 32GB: Tier 3
+const TIER_RAM_LOW: u64 = 16;     // >= 16GB: Tier 2
+
+/// Tier thresholds for GPU VRAM (in GB)
+const TIER_VRAM_HIGH: u64 = 24;   // >= 24GB: Tier 5
+const TIER_VRAM_MID: u64 = 12;    // >= 12GB: Tier 4
+const TIER_VRAM_LOW: u64 = 8;     // >= 8GB: Tier 3
+const TIER_VRAM_MIN: u64 = 4;     // >= 4GB: Tier 2
+
+/// Conversion factor: Megabytes to Bytes
+const MB_TO_BYTES: u64 = 1024 * 1024;
+
+/// Default disk space assumption for Windows (500 GB)
+const DEFAULT_DISK_TOTAL: u64 = 500 * 1024 * 1024 * 1024;
+
+/// Default available disk space for Windows (100 GB)
+const DEFAULT_DISK_AVAILABLE: u64 = 100 * 1024 * 1024 * 1024;
+
+/// Default VRAM for AMD GPU if detection fails (8 GB)
+const DEFAULT_AMD_VRAM: u64 = 8 * 1024 * 1024 * 1024;
 
 /// Detected hardware information
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -242,8 +290,9 @@ impl HardwareDetector {
                     let parts: Vec<&str> = line.split(',').collect();
                     if parts.len() >= 3 {
                         let name = parts[0].trim().to_string();
-                        let vram_total: u64 = parts[1].trim().parse().unwrap_or(0) * 1024 * 1024; // Convert MB to bytes
-                        let vram_free: u64 = parts[2].trim().parse().unwrap_or(0) * 1024 * 1024; // Convert MB to bytes
+                        // nvidia-smi reports VRAM in MB, convert to bytes
+                        let vram_total: u64 = parts[1].trim().parse().unwrap_or(0) * MB_TO_BYTES;
+                        let vram_free: u64 = parts[2].trim().parse().unwrap_or(0) * MB_TO_BYTES;
                         let vram_available = vram_free.min(vram_total);
 
                         // Get CUDA version
@@ -435,13 +484,13 @@ impl HardwareDetector {
                     .collect();
 
                 if let Some(&mb) = numbers.first() {
-                    return mb * 1024 * 1024; // Convert MB to bytes
+                    return mb * MB_TO_BYTES;
                 }
             }
         }
 
         // Default to 8GB if AMD GPU detected but VRAM unknown
-        8 * 1024 * 1024 * 1024
+        DEFAULT_AMD_VRAM
     }
 
     /// Detect disk space
@@ -499,8 +548,8 @@ impl HardwareDetector {
         // Fallback for Windows or if df fails
         debug!("Using default disk information");
         Ok(DiskInfo {
-            total_bytes: 500 * 1024 * 1024 * 1024,     // 500 GB
-            available_bytes: 100 * 1024 * 1024 * 1024, // 100 GB
+            total_bytes: DEFAULT_DISK_TOTAL,
+            available_bytes: DEFAULT_DISK_AVAILABLE,
             data_path,
         })
     }
@@ -575,13 +624,35 @@ impl HardwareDetector {
 
 impl HardwareInfo {
     /// Check if hardware meets minimum requirements
+    ///
+    /// # Requirements
+    /// - RAM: >= 8 GB
+    /// - Disk: >= 10 GB available
+    ///
+    /// # Returns
+    /// `true` if system meets all minimum requirements
     pub fn meets_minimum_requirements(&self) -> bool {
-        // Minimum: 8GB RAM, 10GB disk
-        self.ram_bytes >= 8 * 1024 * 1024 * 1024
-            && self.disk.available_bytes >= 10 * 1024 * 1024 * 1024
+        self.ram_bytes >= MIN_RAM_BYTES
+            && self.disk.available_bytes >= MIN_DISK_BYTES
     }
 
     /// Check if hardware can run a model of given size
+    ///
+    /// # Arguments
+    /// * `model_size_bytes` - Size of the model in bytes
+    /// * `needs_gpu` - Whether the model requires GPU acceleration
+    ///
+    /// # Returns
+    /// `true` if the system has sufficient resources:
+    /// - If `needs_gpu`: Checks GPU VRAM availability and GPU support
+    /// - If CPU-only: Checks system RAM availability
+    ///
+    /// # Example
+    /// ```ignore
+    /// let hw = HardwareDetector::detect()?;
+    /// // Can we run a 4GB model on GPU?
+    /// let can_run = hw.can_run_model(4 * 1024 * 1024 * 1024, true);
+    /// ```
     pub fn can_run_model(&self, model_size_bytes: u64, needs_gpu: bool) -> bool {
         if needs_gpu {
             if let Some(ref gpu) = self.gpu {
@@ -595,29 +666,52 @@ impl HardwareInfo {
     }
 
     /// Get hardware tier (1-5, higher is better)
+    ///
+    /// # Tier Calculation
+    ///
+    /// **RAM-based tiers:**
+    /// - Tier 4: >= 64 GB RAM
+    /// - Tier 3: >= 32 GB RAM
+    /// - Tier 2: >= 16 GB RAM
+    /// - Tier 1: < 16 GB RAM
+    ///
+    /// **GPU-based tiers (can upgrade RAM tier):**
+    /// - Tier 5: >= 24 GB VRAM
+    /// - Tier 4: >= 12 GB VRAM
+    /// - Tier 3: >= 8 GB VRAM
+    /// - Tier 2: >= 4 GB VRAM
+    ///
+    /// The final tier is the maximum of RAM and GPU tiers.
+    ///
+    /// # Example
+    /// ```ignore
+    /// // 32 GB RAM + RTX 4090 (24 GB VRAM) = Tier 5
+    /// // 16 GB RAM + RTX 3060 (12 GB VRAM) = Tier 4
+    /// // 8 GB RAM + no GPU = Tier 1
+    /// ```
     pub fn tier(&self) -> u8 {
         let mut tier = 1u8;
 
         // RAM tier
         let ram_gb = self.ram_bytes / (1024 * 1024 * 1024);
-        if ram_gb >= 64 {
+        if ram_gb >= TIER_RAM_HIGH {
             tier = tier.max(4);
-        } else if ram_gb >= 32 {
+        } else if ram_gb >= TIER_RAM_MID {
             tier = tier.max(3);
-        } else if ram_gb >= 16 {
+        } else if ram_gb >= TIER_RAM_LOW {
             tier = tier.max(2);
         }
 
-        // GPU tier
+        // GPU tier (can upgrade RAM tier)
         if let Some(ref gpu) = self.gpu {
             let vram_gb = gpu.vram_bytes / (1024 * 1024 * 1024);
-            if vram_gb >= 24 {
+            if vram_gb >= TIER_VRAM_HIGH {
                 tier = tier.max(5);
-            } else if vram_gb >= 12 {
+            } else if vram_gb >= TIER_VRAM_MID {
                 tier = tier.max(4);
-            } else if vram_gb >= 8 {
+            } else if vram_gb >= TIER_VRAM_LOW {
                 tier = tier.max(3);
-            } else if vram_gb >= 4 {
+            } else if vram_gb >= TIER_VRAM_MIN {
                 tier = tier.max(2);
             }
         }

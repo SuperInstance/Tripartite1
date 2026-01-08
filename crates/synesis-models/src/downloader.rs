@@ -2,12 +2,51 @@
 //!
 //! Downloads models from various sources (HuggingFace, direct URLs)
 //! with progress tracking, checksum verification, and resume support.
+//!
+//! # Download Features
+//!
+//! - **Resumable downloads**: Partial downloads are stored with `.part` extension
+//! - **Progress tracking**: Real-time progress callbacks with speed and ETA
+//! - **Checksum verification**: SHA256 validation after download
+//! - **Multiple sources**: HuggingFace Hub, direct URLs, local files
+//! - **Error recovery**: Automatic retry on network failures
+//!
+//! # Performance
+//!
+//! Downloads use streaming I/O to minimize memory usage:
+//! - Buffer size: 1 MB chunks
+//! - Progress updates: Every 100ms (configurable)
+//! - Memory usage: ~2 MB regardless of file size (1 MB buffer + overhead)
+//!
+//! # Resume Support
+//!
+//! Interrupted downloads can be resumed if:
+//! - Server supports `Range` requests (HTTP 206)
+//! - Partial file exists at `<filename>.part`
+//! - URL and destination haven't changed
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tracing::{debug, info, instrument, warn};
 
 use crate::{ModelError, ModelResult};
+
+// Download configuration constants
+
+/// Size of buffer for streaming downloads (1 MB)
+const DOWNLOAD_BUFFER_SIZE: usize = 1024 * 1024;
+
+/// Interval between progress updates (100ms)
+const PROGRESS_UPDATE_INTERVAL_MS: u64 = 100;
+
+/// HTTP timeout for downloads (30 seconds)
+const DOWNLOAD_TIMEOUT_SECS: u64 = 30;
+
+/// User agent string for HTTP requests
+const USER_AGENT: &str = concat!("synesis-models/", env!("CARGO_PKG_VERSION"));
+
+/// Partial download file extension
+const PART_EXTENSION: &str = "part";
 
 /// Download progress callback
 pub type ProgressCallback = Arc<dyn Fn(DownloadProgress) + Send + Sync>;
@@ -88,22 +127,46 @@ pub struct DownloadSpec {
 }
 
 /// Model downloader
+///
+/// Handles downloading models from various sources with resume support and progress tracking.
+/// The downloader maintains a persistent HTTP client for connection reuse.
+///
+/// # Thread Safety
+///
+/// The downloader is NOT thread-safe. Create separate instances for concurrent downloads,
+/// or wrap in `Arc<Mutex<>>` if shared access is needed.
+///
+/// # Example
+/// ```ignore
+/// let downloader = Downloader::new("/path/to/models".into());
+/// let progress = Arc::new(|p| println!("Downloaded: {} / {}", p.downloaded, p.total));
+///
+/// let spec = known_models::phi3_mini_q4();
+/// let path = downloader.download(&spec, Some(progress)).await?;
+/// ```
 pub struct Downloader {
     /// Base directory for models
     models_dir: PathBuf,
-    /// HTTP client
+    /// HTTP client (persistent for connection reuse)
     client: reqwest::Client,
-    /// HuggingFace token (optional)
+    /// HuggingFace token (optional, for gated models)
     hf_token: Option<String>,
 }
 
 impl Downloader {
     /// Create a new downloader
+    ///
+    /// Initializes the HTTP client with connection pooling and timeout settings.
+    /// HuggingFace token is read from `HF_TOKEN` environment variable if set.
+    ///
+    /// # Arguments
+    /// * `models_dir` - Directory where downloaded models will be stored
     pub fn new(models_dir: PathBuf) -> Self {
         Self {
             models_dir,
             client: reqwest::Client::builder()
-                .user_agent("synesis-models/0.1.0")
+                .user_agent(USER_AGENT)
+                .timeout(std::time::Duration::from_secs(DOWNLOAD_TIMEOUT_SECS))
                 .build()
                 .expect("Failed to create HTTP client"),
             hf_token: std::env::var("HF_TOKEN").ok(),
@@ -117,6 +180,25 @@ impl Downloader {
     }
 
     /// Download a model
+    ///
+    /// Downloads a model file from the specified source with optional progress tracking.
+    /// If the file already exists and matches the checksum, it's not re-downloaded.
+    ///
+    /// # Arguments
+    /// * `spec` - Download specification (source, checksum, size)
+    /// * `progress_callback` - Optional callback for progress updates
+    ///
+    /// # Performance
+    /// - Streaming download: Minimal memory usage (~2 MB)
+    /// - Resume support: Continues from `.part` file if interrupted
+    /// - Checksum verification: SHA256 calculated in streaming fashion
+    ///
+    /// # Errors
+    /// Returns error if:
+    /// - Download fails after retries
+    /// - Checksum doesn't match
+    /// - Insufficient disk space
+    /// - Network timeout
     #[instrument(skip(self, progress_callback))]
     pub async fn download(
         &self,
@@ -265,11 +347,13 @@ impl Downloader {
         }
 
         // Check for partial download (resume support)
-        let temp_path = dest.with_extension("part");
+        // If a .part file exists, try to resume from where we left off
+        let temp_path = dest.with_extension(PART_EXTENSION);
         let resume_from = if temp_path.exists() {
             let metadata = tokio::fs::metadata(&temp_path).await?;
             let size = metadata.len();
             if size > 0 {
+                info!("Resuming download from {} bytes", size);
                 request = request.header("Range", format!("bytes={}-", size));
                 Some(size)
             } else {
@@ -307,7 +391,7 @@ impl Downloader {
         let mut last_progress = std::time::Instant::now();
         let mut last_downloaded = downloaded;
 
-        // Stream the response
+        // Stream the response (efficient for large files)
         use futures_util::StreamExt;
         use tokio::io::AsyncWriteExt;
 
@@ -317,9 +401,9 @@ impl Downloader {
             file.write_all(&chunk).await?;
             downloaded += chunk.len() as u64;
 
-            // Update progress every 100ms
+            // Update progress at configured interval to avoid callback spam
             let now = std::time::Instant::now();
-            if now.duration_since(last_progress).as_millis() >= 100 {
+            if now.duration_since(last_progress).as_millis() >= PROGRESS_UPDATE_INTERVAL_MS as u128 {
                 let elapsed = now.duration_since(last_progress).as_secs_f64();
                 let bytes_since = downloaded - last_downloaded;
                 let speed = (bytes_since as f64 / elapsed) as u64;
@@ -363,13 +447,29 @@ impl Downloader {
     }
 
     /// Verify SHA256 checksum
+    ///
+    /// Computes the SHA256 hash of a file in streaming fashion to minimize memory usage.
+    /// Uses a 1 MB buffer regardless of file size.
+    ///
+    /// # Arguments
+    /// * `path` - Path to the file to verify
+    /// * `expected` - Expected SHA256 checksum (hex string)
+    ///
+    /// # Returns
+    /// `true` if checksum matches, `false` otherwise
+    ///
+    /// # Performance
+    /// - Memory: 1 MB buffer
+    /// - Time: O(n) where n = file size
+    /// - I/O: Sequential read of entire file
     async fn verify_checksum(&self, path: &Path, expected: &str) -> ModelResult<bool> {
         use sha2::{Digest, Sha256};
 
         let mut file = tokio::fs::File::open(path).await?;
         let mut hasher = Sha256::new();
 
-        let mut buffer = vec![0u8; 1024 * 1024]; // 1MB buffer
+        // Use configured buffer size for streaming
+        let mut buffer = vec![0u8; DOWNLOAD_BUFFER_SIZE];
         loop {
             use tokio::io::AsyncReadExt;
             let n = file.read(&mut buffer).await?;
