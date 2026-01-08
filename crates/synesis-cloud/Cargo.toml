@@ -48,6 +48,8 @@ url = "2.5"
 [dev-dependencies]
 tokio-test = "0.4"
 criterion = "0.5"
+synesis-privacy = { path = "../synesis-privacy" }
+synesis-core = { path = "../synesis-core" }
 
 [lib]
 name = "synesis_cloud"
