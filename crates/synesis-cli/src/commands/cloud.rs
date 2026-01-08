@@ -18,6 +18,9 @@ pub enum CloudCommands {
     /// Show account status and usage
     Status,
 
+    /// Show account balance
+    Balance,
+
     /// Add credits to account
     Topup(TopupArgs),
 
@@ -138,6 +141,7 @@ pub async fn run(cmd: CloudCommands, _config: &Config) -> anyhow::Result<()> {
         CloudCommands::Login(args) => login(args).await,
         CloudCommands::Logout => logout().await,
         CloudCommands::Status => show_status().await,
+        CloudCommands::Balance => show_balance().await,
         CloudCommands::Topup(args) => topup(args).await,
         CloudCommands::Usage(args) => show_usage(args).await,
         CloudCommands::Ping => ping().await,
@@ -207,6 +211,43 @@ async fn show_status() -> anyhow::Result<()> {
     table.add_row(vec!["Latency", "45ms"]);
 
     println!("{table}");
+    Ok(())
+}
+
+async fn show_balance() -> anyhow::Result<()> {
+    println!("{}", "Account Balance".bold());
+    println!();
+
+    let mut table = Table::new();
+    table.load_preset(UTF8_FULL);
+    table.set_header(vec!["Item", "Amount"]);
+
+    // TODO: Get from cloud API
+    table.add_row(vec!["Current Balance", "$24.50"]);
+    table.add_row(vec!["Available Credits", "$5.00"]);
+    table.add_row(vec!["Pending Charges", "$2.30"]);
+    table.add_row(vec!["Credit Ceiling", "$100.00"]);
+    table.add_row(vec!["", ""]);
+    table.add_row(vec!["Total Available", "$27.20"]);
+
+    println!("{table}");
+    println!();
+
+    // Show tier info
+    println!("{}", "Billing Tier".bold());
+    println!("  Plan: {}", "Managed (3% markup)".cyan());
+    println!("  Knowledge Credits: {}", "Yes".green());
+    println!();
+
+    // Show recent transactions
+    println!("{}", "Recent Transactions".dimmed());
+    println!("  Jan 15:  -$12.30 (342 cloud requests)");
+    println!("  Jan 14:  -$8.50 (245 cloud requests)");
+    println!("  Jan 13:  -$3.20 (98 cloud requests)");
+    println!("  Jan 12:  +$10.00 (knowledge contribution)");
+    println!();
+    println!("  View full history: {}", "synesis cloud usage".cyan());
+
     Ok(())
 }
 

@@ -58,6 +58,13 @@ pub enum Commands {
     #[command(subcommand)]
     Cloud(commands::cloud::CloudCommands),
 
+    /// Upload LoRA to cloud
+    Push(commands::push::PushArgs),
+
+    /// Manage collaborator invites
+    #[command(subcommand)]
+    Invite(commands::invite::InviteCommands),
+
     /// Configuration management
     #[command(subcommand)]
     Config(commands::config::ConfigCommands),
@@ -90,6 +97,8 @@ async fn main() -> anyhow::Result<()> {
         Commands::Model(cmd) => commands::model::run(cmd, &config).await,
         Commands::Knowledge(cmd) => commands::knowledge::run(cmd, &config).await,
         Commands::Cloud(cmd) => commands::cloud::run(cmd, &config).await,
+        Commands::Push(args) => commands::push::run(args, &config).await,
+        Commands::Invite(cmd) => commands::invite::run(cmd, &config).await,
         Commands::Config(cmd) => commands::config::run(cmd, &config).await,
     }
 }
