@@ -191,7 +191,30 @@ impl ConsensusEngine {
         Self::new(ConsensusConfig::default(), pathos, logos, ethos)
     }
 
-    /// Finalize an outcome by reinflating tokens if redactor is available
+    /// Finalize consensus outcome by constructing the result object
+    ///
+    /// This function consolidates all agent responses, metadata, and timing information
+    /// into the final `ConsensusOutcome` that will be returned to the caller.
+    ///
+    /// # Privacy & Re-inflation
+    ///
+    /// **Current Implementation**: The content remains in redacted form.
+    ///
+    /// **TODO**: Implement proper re-inflation:
+    /// - The token vault is not accessible from this context
+    /// - Need to pass vault reference or defer re-inflation to caller
+    /// - When implemented: Replace `content.clone()` with `redactor.reinflate(&content, session_id)?`
+    ///
+    /// # Parameters
+    ///
+    /// - `result`: Consensus result (Consensus/NoConsensus/Vetoed)
+    /// - `content`: Final response content (may be redacted)
+    /// - `reasoning`: Optional explanation of consensus decision
+    /// - `pathos_response`: Pathos agent output for transparency
+    /// - `logos_response`: Logos agent output for transparency
+    /// - `ethos_response`: Ethos agent output for transparency
+    /// - `start_time`: When consensus process began (for duration calculation)
+    /// - `redaction_stats`: Privacy statistics if redaction was performed
     #[allow(clippy::too_many_arguments)]
     fn finalize_outcome(
         &mut self,
@@ -204,20 +227,25 @@ impl ConsensusEngine {
         start_time: Instant,
         redaction_stats: Option<PrivacyRedactionStats>,
     ) -> CoreResult<ConsensusOutcome> {
-        // Reinflate content if redactor is available
+        // Re-inflate content if redactor is available
+        // Note: Currently not implemented due to token vault access constraints
+        // TODO: Implement proper re-inflation when vault architecture allows
         let final_content = if let Some(ref mut _redactor) = self.redactor {
-            debug!("Reinflating response");
-            // Note: reinflate is synchronous in the current implementation
-            // If it becomes async, this will need to change
-            content.clone() // For now, keep redacted since reinflate needs vault access
+            debug!("Reinflating response (placeholder - content remains redacted)");
+            // Future implementation:
+            // let session_id = self.session_id.as_deref().unwrap_or("default");
+            // redactor.reinflate(&content, session_id)?
+            content.clone() // For now, keep redacted content
         } else {
-            content
+            content // No redactor, return content as-is
         };
 
+        // Calculate total duration and construct outcome
         Ok(ConsensusOutcome {
             result,
             content: final_content,
             reasoning,
+            // Store individual agent responses for debugging/transparency
             pathos_response: Some(pathos_response),
             logos_response: Some(logos_response),
             ethos_response: Some(ethos_response),

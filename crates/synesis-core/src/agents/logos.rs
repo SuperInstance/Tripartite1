@@ -28,6 +28,26 @@ pub struct LogosAgent {
     rag_enabled: bool,
 }
 
+// Relevance scoring constants for Logos agent
+//
+// Recency boost: Recent documents get higher scores
+// - MAX_RECENCY_BOOST: 1.5x score for documents updated today
+// - DAYS_PENALTY_FACTOR: 0.1 penalty per day since update
+// - MAX_DAYS_PENALTY: 0.5 max penalty (after 5+ days, no boost/penalty)
+//
+// Source quality: Different document types have different reliability
+// - Code: 1.0x (highest - executable and tested)
+// - Docs: 0.9x (high - curated and reviewed)
+// - Notes: 0.8x (medium - informal but useful)
+// - Other: 0.7x (lower - unverified sources)
+const MAX_RECENCY_BOOST: f32 = 1.5;
+const DAYS_PENALTY_FACTOR: f32 = 0.1;
+const MAX_DAYS_PENALTY: f32 = 0.5;
+const SOURCE_QUALITY_CODE: f32 = 1.0;
+const SOURCE_QUALITY_DOCS: f32 = 0.9;
+const SOURCE_QUALITY_NOTES: f32 = 0.8;
+const SOURCE_QUALITY_OTHER: f32 = 0.7;
+
 impl LogosAgent {
     /// Create a new Logos agent
     pub fn new(config: AgentConfig) -> Self {
@@ -209,23 +229,51 @@ impl LogosAgent {
     }
 
     /// Calculate relevance score with recency boost and source quality
+    ///
+    /// Scoring formula: `cosine_similarity * recency_boost * source_quality`
+    ///
+    /// # Factors
+    ///
+    /// 1. **Cosine Similarity**: Base semantic similarity (0.0 to 1.0)
+    ///
+    /// 2. **Recency Boost**: Recent documents get up to 1.5x boost
+    ///    - Updated today: 1.5x boost
+    ///    - Updated 5+ days ago: 1.0x (no boost)
+    ///
+    /// 3. **Source Quality**: Document type reliability multiplier
+    ///    - Code: 1.0x (most reliable)
+    ///    - Documentation: 0.9x
+    ///    - Notes: 0.8x
+    ///    - Other: 0.7x
+    ///
+    /// # Example
+    /// ```text
+    /// cosine_similarity = 0.85
+    /// days_since_update = 2
+    /// doc_type = "code"
+    ///
+    /// days_penalty = min(2 * 0.1, 0.5) = 0.2
+    /// recency_boost = 1.5 - 0.2 = 1.3
+    /// source_quality = 1.0
+    ///
+    /// final_score = 0.85 * 1.3 * 1.0 = 1.105
+    /// ```
     fn calculate_relevance_score(&self, raw: &RawChunkResult) -> f32 {
         let cosine_similarity = raw.similarity;
 
-        // Calculate recency boost: More recent = higher boost (capped at 1.5x)
-        // 0 days = 1.5x, 5+ days = 1.0x (no boost/penalty)
-        let days_penalty = (raw.days_since_update as f32 * 0.1).min(0.5);
-        let recency_boost = 1.5 - days_penalty;
+        // Apply recency boost: More recent = higher boost (capped at MAX_RECENCY_BOOST)
+        let days_penalty = (raw.days_since_update as f32 * DAYS_PENALTY_FACTOR).min(MAX_DAYS_PENALTY);
+        let recency_boost = MAX_RECENCY_BOOST - days_penalty;
 
-        // Source quality multiplier
+        // Apply source quality multiplier based on document type
         let source_quality = match raw.doc_type.as_str() {
-            "code" | "rust" | "python" | "javascript" => 1.0, // Code is highest quality
-            "markdown" | "docs" => 0.9,                       // Docs are high quality
-            "text" | "notes" => 0.8,                          // Notes are medium quality
-            _ => 0.7,                                         // Other types
+            "code" | "rust" | "python" | "javascript" => SOURCE_QUALITY_CODE,
+            "markdown" | "docs" => SOURCE_QUALITY_DOCS,
+            "text" | "notes" => SOURCE_QUALITY_NOTES,
+            _ => SOURCE_QUALITY_OTHER,
         };
 
-        // Final relevance score
+        // Final relevance score combines all three factors
         cosine_similarity * recency_boost * source_quality
     }
 
