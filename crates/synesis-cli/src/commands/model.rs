@@ -2,7 +2,6 @@
 
 use clap::Subcommand;
 use comfy_table::{presets::UTF8_FULL, Table};
-use indicatif::{ProgressBar, ProgressStyle};
 use owo_colors::OwoColorize;
 use std::path::PathBuf;
 
@@ -233,7 +232,7 @@ async fn download_model(args: DownloadArgs, _config: &Config) -> anyhow::Result<
     println!("Or use wget:");
     println!("  wget {} -O ~/.synesis/models/{}", model_info.url, model_info.file_name);
     println!();
-    println!("{} {}", "Note:".yellow(), "Models directory: ~/.synesis/models/");
+    println!("{} Models directory: ~/.synesis/models/", "Note:".yellow());
     println!();
 
     // If it's the embedding model, add special note

@@ -81,7 +81,8 @@ impl Default for IndexerConfig {
 pub struct DocumentIndexer {
     /// Channel sender for commands
     command_tx: mpsc::Sender<IndexCommand>,
-    /// Configuration
+    /// Configuration for future reference
+    #[allow(dead_code)]
     config: IndexerConfig,
 }
 
@@ -113,7 +114,9 @@ impl DocumentIndexer {
         self.command_tx
             .send(cmd)
             .await
-            .map_err(|_| KnowledgeError::Internal("Indexer task shut down".to_string()))?;
+            .map_err(|_| KnowledgeError::Internal(
+                "Indexer task shut down or channel full while processing file".to_string()
+            ))?;
         Ok(())
     }
 
@@ -135,7 +138,9 @@ impl DocumentIndexer {
         self.command_tx
             .send(cmd)
             .await
-            .map_err(|_| KnowledgeError::Internal("Indexer task shut down".to_string()))?;
+            .map_err(|_| KnowledgeError::Internal(
+                "Indexer task shut down or channel full while indexing content".to_string()
+            ))?;
 
         Ok(())
     }
@@ -228,11 +233,12 @@ impl IndexerHandle {
         // Read file (async, no lock held)
         let content = tokio::fs::read_to_string(path).await?;
 
-        // Get filename for title
+        // Get filename for title (use to_str for proper UTF-8 handling)
         let filename = path
             .file_name()
-            .map(|f| f.to_string_lossy().to_string())
-            .unwrap_or_else(|| "Unknown".to_string());
+            .and_then(|f| f.to_str())
+            .unwrap_or("Unknown")
+            .to_string();
 
         // Detect document type
         let doc_type = detect_document_type(&filename);
@@ -461,6 +467,7 @@ pub struct LegacyDocumentIndexer<'a, E: EmbeddingProvider> {
     skip_duplicates: bool,
 }
 
+#[allow(deprecated)]
 impl<'a, E: EmbeddingProvider> LegacyDocumentIndexer<'a, E> {
     /// Create a new legacy indexer
     pub fn new(vault: &'a KnowledgeVault, embedder: &'a E) -> Self {
@@ -492,11 +499,12 @@ impl<'a, E: EmbeddingProvider> LegacyDocumentIndexer<'a, E> {
         // Read file content
         let content = tokio::fs::read_to_string(path).await?;
 
-        // Get filename for title
+        // Get filename for title (use to_str for proper UTF-8 handling)
         let filename = path
             .file_name()
-            .map(|f| f.to_string_lossy().to_string())
-            .unwrap_or_else(|| "Unknown".to_string());
+            .and_then(|f| f.to_str())
+            .unwrap_or("Unknown")
+            .to_string();
 
         // Detect document type
         let doc_type = detect_document_type(&filename);

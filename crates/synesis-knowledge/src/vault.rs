@@ -6,9 +6,9 @@
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
-use tracing::{debug, info, instrument};
+use tracing::{debug, info, instrument, warn};
 
-use crate::KnowledgeResult;
+use crate::{KnowledgeError, KnowledgeResult};
 
 /// A document in the knowledge vault
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -190,16 +190,18 @@ impl KnowledgeVault {
 
     /// Create VSS virtual table for vector similarity search
     fn create_vss_table(&self) -> KnowledgeResult<()> {
+        // Validate embedding dimensions are within reasonable bounds
+        if self.embedding_dimensions == 0 || self.embedding_dimensions > 10000 {
+            return Err(KnowledgeError::InvalidFormat(
+                format!("Embedding dimensions must be between 1 and 10000, got {}", self.embedding_dimensions)
+            ));
+        }
+
         // Create VSS virtual table for approximate nearest neighbor search
         // vss0 requires explicit chunk_id column for joins
         self.conn.execute(
             &format!(
-                r#"
-                CREATE VIRTUAL TABLE IF NOT EXISTS vss_chunks USING vss0(
-                    vss_chunk_id TEXT PRIMARY KEY,
-                    embedding({ })
-                )
-                "#,
+                "CREATE VIRTUAL TABLE IF NOT EXISTS vss_chunks USING vss0(vss_chunk_id TEXT PRIMARY KEY, embedding({}))",
                 self.embedding_dimensions
             ),
             [],
@@ -357,22 +359,25 @@ impl KnowledgeVault {
 
         // Try to insert into VSS table for vector search
         // Format embedding as vss_debug format: "[0.1,0.2,0.3,...]"
-        let embedding_str = format!(
-            "[{}]",
-            embedding
-                .iter()
-                .map(|f| f.to_string())
-                .collect::<Vec<_>>()
-                .join(",")
-        );
+        let embedding_str = {
+            let mut s = String::from("[");
+            for (i, f) in embedding.iter().enumerate() {
+                if i > 0 {
+                    s.push(',');
+                }
+                s.push_str(&f.to_string());
+            }
+            s.push(']');
+            s
+        };
 
         // Insert into VSS table for fast vector search
         if let Err(e) = self.conn.execute(
             "INSERT INTO vss_chunks (vss_chunk_id, embedding) VALUES (?1, ?2)",
             params![chunk_id, embedding_str],
         ) {
-            debug!(
-                "Failed to insert into VSS table (may not be available): {}",
+            warn!(
+                "Failed to insert into VSS table: {}. Vector search may be limited to cosine similarity fallback.",
                 e
             );
         }
@@ -423,14 +428,18 @@ impl KnowledgeVault {
         query_embedding: &[f32],
         top_k: usize,
     ) -> KnowledgeResult<Vec<ChunkResult>> {
-        let query_str = format!(
-            "[{}]",
-            query_embedding
-                .iter()
-                .map(|f| f.to_string())
-                .collect::<Vec<_>>()
-                .join(",")
-        );
+        // Format query embedding more efficiently
+        let query_str = {
+            let mut s = String::from("[");
+            for (i, f) in query_embedding.iter().enumerate() {
+                if i > 0 {
+                    s.push(',');
+                }
+                s.push_str(&f.to_string());
+            }
+            s.push(']');
+            s
+        };
 
         let sql = r#"
             SELECT

@@ -180,7 +180,7 @@ fn collect_nvidia_gpu_metrics() -> CloudResult<(Option<f32>, Option<f32>, Option
 
     // Run nvidia-smi to query GPU stats
     let output = Command::new("nvidia-smi")
-        .args(&[
+        .args([
             "--query-gpu=utilization.gpu,temperature.gpu,utilization.memory",
             "--format=csv,noheader,nounits",
         ])
@@ -211,7 +211,7 @@ fn collect_amd_gpu_metrics() -> CloudResult<(Option<f32>, Option<f32>, Option<f3
 
     // Run rocm-smi to query GPU stats
     let output = Command::new("rocm-smi")
-        .args(&["--showuse", "--showtemp", "--showmemuse", "--csv"])
+        .args(["--showuse", "--showtemp", "--showmemuse", "--csv"])
         .output()
         .map_err(|_| CloudError::telemetry("rocm-smi not available"))?;
 
@@ -300,19 +300,19 @@ mod tests {
     #[test]
     fn test_cpu_collection() {
         let cpu = collect_cpu_usage();
-        assert!(cpu >= 0.0 && cpu <= 1.0);
+        assert!((0.0..=1.0).contains(&cpu));
     }
 
     #[cfg(target_os = "linux")]
     #[test]
     fn test_memory_collection() {
         let mem = collect_memory_usage();
-        assert!(mem >= 0.0 && mem <= 1.0);
+        assert!((0.0..=1.0).contains(&mem));
     }
 
     #[test]
     fn test_disk_collection() {
         let disk = collect_disk_usage();
-        assert!(disk >= 0.0 && disk <= 1.0);
+        assert!((0.0..=1.0).contains(&disk));
     }
 }

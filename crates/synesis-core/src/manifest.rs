@@ -136,7 +136,7 @@ impl A2AManifest {
 
     /// Increment round counter
     pub fn next_round(&mut self) {
-        self.round += 1;
+        self.round = self.round.saturating_add(1);
         // Clear previous results for fresh evaluation
         self.logos_response = None;
         self.logos_confidence = None;
@@ -249,5 +249,18 @@ mod tests {
 
         manifest.set_redacted_query("Redacted query".to_string());
         assert_eq!(manifest.effective_query(), "Redacted query");
+    }
+
+    #[test]
+    fn test_round_overflow_protection() {
+        let mut manifest = A2AManifest::new("test".to_string());
+
+        // Test that round counter saturates at u8::MAX (255) instead of overflowing
+        for _ in 0..300 {
+            manifest.next_round();
+        }
+
+        // Should be 255, not wrapped to 0 or some other value
+        assert_eq!(manifest.round, 255);
     }
 }

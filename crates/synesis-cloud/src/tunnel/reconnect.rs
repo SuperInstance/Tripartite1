@@ -10,9 +10,13 @@ use tokio::time::sleep;
 /// Reconnection configuration
 #[derive(Debug, Clone)]
 pub struct ReconnectConfig {
+    /// Initial delay before first reconnection attempt
     pub initial_delay: Duration,
+    /// Maximum delay between attempts (exponential backoff caps here)
     pub max_delay: Duration,
+    /// Maximum number of reconnection attempts before giving up
     pub max_attempts: u32,
+    /// Multiplier for exponential backoff (e.g., 2.0 = double each time)
     pub backoff_multiplier: f32,
 }
 
@@ -141,10 +145,15 @@ pub fn spawn_reconnect_task(
 
 /// Proxy for CloudTunnel to avoid circular dependency
 pub struct CloudTunnelProxy {
+    /// Connection state machine for monitoring and state transitions
     pub state_machine: ConnectionStateMachine,
 }
 
 impl CloudTunnelProxy {
+    /// Internal reconnection method
+    ///
+    /// Called by the reconnection task when attempting to reconnect.
+    /// This is a placeholder - actual implementation is in the main CloudTunnel.
     pub async fn reconnect_internal(&self) -> CloudResult<()> {
         // TODO: Implement actual reconnection logic in main CloudTunnel
         tracing::info!("Attempting reconnection...");

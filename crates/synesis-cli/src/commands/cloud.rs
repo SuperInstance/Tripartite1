@@ -149,7 +149,7 @@ pub async fn run(cmd: CloudCommands, _config: &Config) -> anyhow::Result<()> {
 }
 
 async fn login(args: LoginArgs) -> anyhow::Result<()> {
-    if let Some(api_key) = args.api_key {
+    if let Some(_api_key) = args.api_key {
         println!("Authenticating with API key...");
         // TODO: Validate key with cloud API
         println!("{} Logged in successfully", "✓".green());

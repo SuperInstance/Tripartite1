@@ -78,7 +78,7 @@ impl EscalationClient {
 
         // Serialize request
         let payload = serde_json::to_vec(&request)
-            .map_err(|e| CloudError::Serialization(e))?;
+            .map_err(CloudError::Serialization)?;
 
         // Send via tunnel
         let response_data = tokio::time::timeout(
@@ -91,7 +91,7 @@ impl EscalationClient {
 
         // Parse response
         let response: EscalationResponse = serde_json::from_slice(&response_data)
-            .map_err(|e| CloudError::Serialization(e))?;
+            .map_err(CloudError::Serialization)?;
 
         // Verify request_id matches
         if response.request_id != request.request_id {
@@ -161,7 +161,9 @@ impl EscalationClient {
 /// Client statistics
 #[derive(Debug, Clone)]
 pub struct ClientStats {
+    /// Default cloud model for requests
     pub default_model: CloudModel,
+    /// Request timeout duration
     pub timeout: Duration,
 }
 

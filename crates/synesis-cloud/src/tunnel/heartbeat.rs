@@ -12,19 +12,28 @@ use tokio::sync::RwLock;
 /// Pre-warm signal sent when GPU is under stress
 #[derive(Debug, Clone)]
 pub struct PrewarmSignal {
+    /// Device identifier
     pub device_id: String,
+    /// When the signal was generated
     pub timestamp: chrono::DateTime<chrono::Utc>,
+    /// Current GPU utilization (0.0 - 1.0)
     pub gpu_usage: f32,
+    /// Current GPU temperature in Celsius (if available)
     pub gpu_temp: Option<f32>,
+    /// Human-readable reason for pre-warm
     pub reason: String,
 }
 
 /// Heartbeat service configuration
 #[derive(Debug, Clone)]
 pub struct HeartbeatConfig {
+    /// Interval between heartbeat messages
     pub interval: Duration,
+    /// Timeout for heartbeat acknowledgments
     pub timeout: Duration,
-    pub gpu_prewarm_threshold: f32, // Send pre-warm when GPU > this (0.0 - 1.0)
+    /// GPU usage threshold (0.0 - 1.0) for sending pre-warm signals
+    pub gpu_prewarm_threshold: f32,
+    /// Device identifier
     pub device_id: String,
 }
 
@@ -106,7 +115,7 @@ impl HeartbeatService {
                 tokio::select! {
                     _ = interval_timer.tick() => {
                         let conn_opt = connection_lock.read().await;
-                        if let Some(ref conn) = conn_opt.as_ref() {
+                        if let Some(conn) = conn_opt.as_ref() {
                             let seq = sequence.fetch_add(1, Ordering::SeqCst);
 
                             // Collect real device vitals
@@ -186,7 +195,7 @@ impl HeartbeatService {
 
         // Serialize
         let data = serde_json::to_vec(&heartbeat)
-            .map_err(|e| CloudError::Serialization(e))?;
+            .map_err(CloudError::Serialization)?;
 
         // Send on unidirectional stream
         let mut send = conn.open_uni().await

@@ -9,18 +9,23 @@ use serde::{Deserialize, Serialize};
 pub enum BillingTier {
     /// Free tier with monthly limit
     Free {
+        /// Monthly spending limit in cents
         monthly_limit_cents: u32,
     },
 
     /// Managed tier: 3% markup on costs
     Managed {
+        /// Markup percentage on wholesale costs
         markup_percent: f32,
     },
 
     /// BYOK tier: 30% licensing fee
     Byok {
+        /// Licensing fee percentage
         licensing_percent: f32,
+        /// Optional Anthropic API key
         anthropic_key: Option<String>,
+        /// Optional OpenAI API key
         openai_key: Option<String>,
     },
 }
@@ -68,9 +73,13 @@ pub struct UsageEvent {
 /// Local billing ledger (placeholder for Session 2.6)
 #[derive(Debug, Clone, Default)]
 pub struct LocalLedger {
+    /// Accumulated unbilled charges in cents
     pub unbilled_cents: u64,
+    /// Available knowledge credits in cents
     pub knowledge_credits_cents: u64,
+    /// Maximum spending limit in cents
     pub credit_ceiling_cents: u64,
+    /// Current billing tier
     pub tier: BillingTier,
 }
 

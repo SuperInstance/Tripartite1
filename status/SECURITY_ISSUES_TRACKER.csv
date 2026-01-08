@@ -1,0 +1,21 @@
+ID,Severity,Title,Location,Status,Assignee,Estimate,Priority
+SEC-001,HIGH,Missing Server Certificate Pinning,src/tunnel/tls.rs:94-98,Open,Unassigned,1 week,P0
+SEC-002,MEDIUM,Integer Overflow in Billing Calculations,src/billing/client.rs:106-111,Open,Unassigned,2 days,P1
+SEC-003,MEDIUM,Insufficient UTF-8 Validation,src/escalation/client.rs:126-133,Open,Unassigned,1 day,P1
+SEC-004,MEDIUM,Telemetry Privacy Concerns,src/telemetry/vitals.rs:18-39,Open,Unassigned,3 days,P2
+SEC-005,MEDIUM,Unbounded Memory Allocation,src/protocol/frame.rs:127-148,Open,Unassigned,1 day,P2
+SEC-006,MEDIUM,Sensitive Error Messages,src/escalation/client.rs:97-102,Open,Unassigned,1 day,P2
+SEC-007,MEDIUM,Missing Connection Timeout,src/tunnel/endpoint.rs:55-75,Open,Unassigned,2 hours,P2
+SEC-008,LOW,Excessive unwrap() in Tests,Multiple files,Open,Unassigned,1 day,P3
+SEC-009,LOW,Logging Security Issues,Multiple files,Open,Unassigned,2 days,P3
+SEC-010,LOW,Missing Rate Limiting,crate-wide,Open,Unassigned,3 days,P3
+SEC-011,LOW,No Request Signing,crate-wide,Open,Unassigned,1 week,P3
+SEC-012,LOW,Debug Info in Production,crate-wide,Open,Unassigned,1 day,P3
+SEC-013,LOW,API Key Plain Text Storage,src/escalation/client.rs:22,Open,Unassigned,1 day,P3
+SEC-014,LOW,Certificate File Permissions,src/tunnel/tls.rs:27-28,Open,Unassigned,2 hours,P3
+SEC-015,LOW,Certificate Expiration Checking,src/tunnel/tls.rs,Open,Unassigned,1 day,P3
+SEC-016,LOW,Missing Request Size Limits,src/protocol/frame.rs,Open,Unassigned,2 hours,P3
+SEC-017,LOW,No Connection Pooling,src/tunnel/tunnel.rs,Open,Unassigned,2 days,P3
+SEC-018,LOW,Randomness Documentation,crate-wide,Open,Unassigned,1 hour,P3
+SEC-019,LOW,Device ID Sanitization,src/telemetry/vitals.rs,Open,Unassigned,2 hours,P3
+SEC-020,MEDIUM,Race Condition in State Machine,src/tunnel/state.rs:57-86,Closed (False Positive),Unassigned,0 hours,N/A

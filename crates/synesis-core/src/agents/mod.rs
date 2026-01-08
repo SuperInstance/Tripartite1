@@ -321,8 +321,11 @@ impl AgentOutput {
     ///
     /// * `agent` - The agent's name
     /// * `content` - The response content
-    /// * `confidence` - Confidence score (0.0-1.0)
+    /// * `confidence` - Confidence score (0.0-1.0, will be clamped if outside range)
     pub fn new(agent: &str, content: String, confidence: f32) -> Self {
+        // Clamp confidence to valid range [0.0, 1.0] to prevent invalid values
+        let confidence = confidence.clamp(0.0, 1.0);
+
         Self {
             agent: agent.to_string(),
             content,
@@ -803,5 +806,27 @@ mod tests {
         assert_eq!(source.source_type, SourceType::Vector);
         assert_eq!(source.relevance_score, 0.9);
         assert!(source.snippet.is_some());
+    }
+
+    #[test]
+    fn test_confidence_clamping() {
+        // Test negative confidence (should clamp to 0.0)
+        let output1 = AgentOutput::new("test", "content".to_string(), -0.5);
+        assert_eq!(output1.confidence, 0.0);
+
+        // Test confidence > 1.0 (should clamp to 1.0)
+        let output2 = AgentOutput::new("test", "content".to_string(), 1.5);
+        assert_eq!(output2.confidence, 1.0);
+
+        // Test normal confidence (should remain unchanged)
+        let output3 = AgentOutput::new("test", "content".to_string(), 0.85);
+        assert_eq!(output3.confidence, 0.85);
+
+        // Test boundary values
+        let output4 = AgentOutput::new("test", "content".to_string(), 0.0);
+        assert_eq!(output4.confidence, 0.0);
+
+        let output5 = AgentOutput::new("test", "content".to_string(), 1.0);
+        assert_eq!(output5.confidence, 1.0);
     }
 }

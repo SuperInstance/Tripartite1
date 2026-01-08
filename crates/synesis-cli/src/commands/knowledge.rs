@@ -5,8 +5,7 @@ use comfy_table::{presets::UTF8_FULL, Table};
 use indicatif::{ProgressBar, ProgressStyle};
 use owo_colors::OwoColorize;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::sync::Arc;
 use tokio::signal::ctrl_c;
 
 use crate::config::Config;
@@ -315,8 +314,10 @@ async fn watch_directory(args: WatchArgs) -> anyhow::Result<()> {
     let embedder = Arc::new(tokio::sync::Mutex::new(PlaceholderEmbedder::new(384)));
 
     // Configure watcher
-    let mut config = WatchConfig::default();
-    config.directories = vec![path.clone()];
+    let mut config = WatchConfig {
+        directories: vec![path.clone()],
+        ..Default::default()
+    };
 
     // Add custom include patterns if provided
     if let Some(include) = args.include {
@@ -341,7 +342,7 @@ async fn watch_directory(args: WatchArgs) -> anyhow::Result<()> {
     println!("{} Initial indexing...", "Scanning".bold());
 
     // Manually trigger indexing for the directory
-    let command = synesis_knowledge::indexer::IndexCommand::IndexDirectory {
+    let _command = synesis_knowledge::indexer::IndexCommand::IndexDirectory {
         path: path.clone(),
         extensions: config.extensions.clone(),
     };

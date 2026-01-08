@@ -43,9 +43,13 @@ pub struct DeviceVitals {
 /// Heartbeat message sent to cloud
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Heartbeat {
+    /// Unique device identifier
     pub device_id: String,
+    /// Unix timestamp (milliseconds)
     pub timestamp: i64,
+    /// Monotonically increasing sequence number
     pub sequence: u64,
+    /// Device vitals at time of heartbeat
     pub vitals: DeviceVitals,
 }
 
@@ -65,9 +69,19 @@ pub struct HeartbeatAck {
     pub server_status: ServerStatus,
 }
 
+/// Server operational status
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ServerStatus {
+    /// Server operating normally
     Healthy,
-    Degraded { reason: String },
-    Maintenance { until: DateTime<Utc> },
+    /// Server degraded with reason
+    Degraded {
+        /// Explanation of degradation
+        reason: String,
+    },
+    /// Server under maintenance
+    Maintenance {
+        /// Expected maintenance end time
+        until: DateTime<Utc>,
+    },
 }

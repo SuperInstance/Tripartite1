@@ -9,6 +9,7 @@ pub mod endpoint;
 pub mod state;
 pub mod heartbeat;
 pub mod reconnect;
+#[allow(clippy::module_inception)]
 pub mod tunnel;
 
 pub use r#types::{TunnelConfig, TunnelState, TunnelStats};

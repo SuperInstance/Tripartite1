@@ -356,9 +356,10 @@ impl LogosAgent {
 
         // Factor 1: RAG retrieval quality (0.0 - 0.25 boost)
         if !context.is_empty() {
-            // Average relevance of retrieved chunks
+            // Average relevance of retrieved chunks (safe: context not empty)
+            let len = context.len() as f32;
             let avg_relevance: f32 =
-                context.iter().map(|c| c.relevance).sum::<f32>() / context.len() as f32;
+                context.iter().map(|c| c.relevance).sum::<f32>() / len;
 
             // Number of high-relevance chunks (>0.7)
             let high_quality_count = context.iter().filter(|c| c.relevance > 0.7).count();

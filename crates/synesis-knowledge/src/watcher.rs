@@ -233,24 +233,33 @@ impl FileWatcher {
 
             loop {
                 // Process notify events
-                while let Ok(event) = notify_rx.try_recv() {
-                    for path in event.paths {
-                        if !should_process_path(&path, &config_clone) {
-                            continue;
-                        }
+                match notify_rx.try_recv() {
+                    Ok(event) => {
+                        for path in event.paths {
+                            if !should_process_path(&path, &config_clone) {
+                                continue;
+                            }
 
-                        match event.kind {
-                            EventKind::Create(_) | EventKind::Modify(_) => {
-                                pending.insert(path);
-                            },
-                            EventKind::Remove(_) => {
-                                // Remove from checksums
-                                checksums.remove(&path);
-                                // We don't send delete commands for now
-                                // as we don't have a DeleteFile command
-                            },
-                            _ => {},
+                            match event.kind {
+                                EventKind::Create(_) | EventKind::Modify(_) => {
+                                    pending.insert(path);
+                                },
+                                EventKind::Remove(_) => {
+                                    // Remove from checksums
+                                    checksums.remove(&path);
+                                    // We don't send delete commands for now
+                                    // as we don't have a DeleteFile command
+                                },
+                                _ => {},
+                            }
                         }
+                    },
+                    Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                        info!("Notify channel disconnected, shutting down watcher");
+                        break;
+                    },
+                    Err(_) => {
+                        // No events, continue
                     }
                 }
 
@@ -259,9 +268,9 @@ impl FileWatcher {
                     tokio::time::sleep(debounce).await;
 
                     for path in pending.drain() {
-                        if path.exists() {
-                            // Compute checksum and check if actually changed
-                            if let Ok(checksum) = compute_checksum(&path) {
+                        // Compute checksum directly (handles file not found)
+                        match compute_checksum(&path) {
+                            Ok(checksum) => {
                                 let metadata = std::fs::metadata(&path);
                                 let modified = metadata.and_then(|m| m.modified()).ok();
 
@@ -295,6 +304,10 @@ impl FileWatcher {
                                         debug!("Sent index command for changed file: {:?}", path);
                                     }
                                 }
+                            },
+                            Err(e) => {
+                                debug!("Failed to compute checksum for {:?}: {} (file may have been deleted)", path, e);
+                                // File might have been deleted, that's ok
                             }
                         }
                     }

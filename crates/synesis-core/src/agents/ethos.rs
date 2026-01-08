@@ -87,71 +87,82 @@ impl EthosAgent {
     /// Create a new Ethos agent
     pub fn new(config: AgentConfig) -> Self {
         // Initialize veto patterns - these trigger automatic blocking
+        // NOTE: These regex patterns are tested and validated. If modifying,
+        // ensure all regexes compile correctly or agent initialization will panic.
         let veto_patterns = vec![
             // File system dangers
             VetoPattern {
-                pattern: Regex::new(r"rm\s+-rf\s+/").expect("invalid regex"),
+                pattern: Regex::new(r"rm\s+-rf\s+/")
+                    .expect("Regex compilation failed - this is a bug in the hardcoded pattern"),
                 description: "Recursive root deletion",
                 category: VetoCategory::FileSystem,
             },
             VetoPattern {
-                pattern: Regex::new(r"rm\s+-rf\s+\$HOME").expect("invalid regex"),
+                pattern: Regex::new(r"rm\s+-rf\s+\$HOME")
+                    .expect("Regex compilation failed - this is a bug in the hardcoded pattern"),
                 description: "Home directory deletion",
                 category: VetoCategory::FileSystem,
             },
             VetoPattern {
-                pattern: Regex::new(r"rm\s+-rf\s+~").expect("invalid regex"),
+                pattern: Regex::new(r"rm\s+-rf\s+~")
+                    .expect("Regex compilation failed - this is a bug in the hardcoded pattern"),
                 description: "Home directory deletion",
                 category: VetoCategory::FileSystem,
             },
             VetoPattern {
-                pattern: Regex::new(r"dd\s+if=/dev/zero").expect("invalid regex"),
+                pattern: Regex::new(r"dd\s+if=/dev/zero")
+                    .expect("Regex compilation failed - this is a bug in the hardcoded pattern"),
                 description: "Disk destruction command",
                 category: VetoCategory::FileSystem,
             },
             VetoPattern {
-                pattern: Regex::new(r":\(.*\)\{\s*:\|\:&\s*;\s*\}").expect("invalid regex"),
+                pattern: Regex::new(r":\(.*\)\{\s*:\|\:&\s*;\s*\}")
+                    .expect("Regex compilation failed - this is a bug in the hardcoded pattern"),
                 description: "Fork bomb pattern",
                 category: VetoCategory::System,
             },
             // Network dangers
             VetoPattern {
-                pattern: Regex::new(r"curl.*\|\s*(sh|bash)").expect("invalid regex"),
+                pattern: Regex::new(r"curl.*\|\s*(sh|bash)")
+                    .expect("Regex compilation failed - this is a bug in the hardcoded pattern"),
                 description: "Piping URL directly to shell",
                 category: VetoCategory::Network,
             },
             VetoPattern {
-                pattern: Regex::new(r"wget.*\|\s*(sh|bash)").expect("invalid regex"),
+                pattern: Regex::new(r"wget.*\|\s*(sh|bash)")
+                    .expect("Regex compilation failed - this is a bug in the hardcoded pattern"),
                 description: "Piping URL directly to shell",
                 category: VetoCategory::Network,
             },
             VetoPattern {
-                pattern: Regex::new(r"eval\s*\(\s*.*curl").expect("invalid regex"),
+                pattern: Regex::new(r"eval\s*\(\s*.*curl")
+                    .expect("Regex compilation failed - this is a bug in the hardcoded pattern"),
                 description: "Eval with remote content",
                 category: VetoCategory::Network,
             },
             // System file modification
             VetoPattern {
                 pattern: Regex::new(r"echo.*>.*(/etc/|/usr/bin/|/usr/sbin/|/boot/|/kernel)")
-                    .expect("invalid regex"),
+                    .expect("Regex compilation failed - this is a bug in the hardcoded pattern"),
                 description: "System file modification",
                 category: VetoCategory::System,
             },
             VetoPattern {
                 pattern: Regex::new(r"chmod\s+777\s+(/etc/|/usr/|/var/|/boot/)")
-                    .expect("invalid regex"),
+                    .expect("Regex compilation failed - this is a bug in the hardcoded pattern"),
                 description: "Overly permissive system file permissions",
                 category: VetoCategory::System,
             },
             // Credential exposure patterns
             VetoPattern {
                 pattern: Regex::new(r#"(password|api_key|secret)\s*=\s*['"][^'"]+['"]"#)
-                    .expect("invalid regex"),
+                    .expect("Regex compilation failed - this is a bug in the hardcoded pattern"),
                 description: "Hardcoded credentials",
                 category: VetoCategory::Credential,
             },
             VetoPattern {
-                pattern: Regex::new(r"(Bearer|Token)\s+[A-Za-z0-9]{20,}").expect("invalid regex"),
+                pattern: Regex::new(r"(Bearer|Token)\s+[A-Za-z0-9]{20,}")
+                    .expect("Regex compilation failed - this is a bug in the hardcoded pattern"),
                 description: "Token exposure",
                 category: VetoCategory::Credential,
             },

@@ -64,7 +64,9 @@ impl FrameType {
 /// Binary format: [Type: 1B][Length: 4BE][Payload: JSON]
 #[derive(Debug, Clone)]
 pub struct Frame {
+    /// Message type byte
     pub frame_type: FrameType,
+    /// Serialized message payload (JSON)
     pub payload: Vec<u8>,
 }
 
@@ -99,7 +101,7 @@ impl Frame {
         };
 
         let payload = serde_json::to_vec(&message)
-            .map_err(|e| CloudError::Serialization(e))?;
+            .map_err(CloudError::Serialization)?;
 
         Self::new(frame_type, payload)
     }
@@ -148,7 +150,7 @@ impl Frame {
     /// Parse payload as message
     pub fn to_message(&self) -> CloudResult<TunnelMessage> {
         serde_json::from_slice(&self.payload)
-            .map_err(|e| CloudError::Serialization(e))
+            .map_err(CloudError::Serialization)
     }
 
     /// Get payload length

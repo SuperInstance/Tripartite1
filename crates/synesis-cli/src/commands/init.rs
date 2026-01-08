@@ -66,18 +66,18 @@ pub async fn run(args: InitArgs, _config: &Config) -> anyhow::Result<()> {
         println!("  {} No GPU detected (CPU-only inference)", "GPU:".dimmed());
     }
     println!(
-        "  {} {}",
+        "  {} {} {}",
         "Platform:".dimmed(),
-        format!("{} {}", hardware.platform.os, hardware.platform.arch)
+        hardware.platform.os,
+        hardware.platform.arch
     );
     println!();
 
     // Check minimum requirements
     if !hardware.meets_minimum_requirements() {
         println!(
-            "{} {}",
-            "⚠️  Warning:".yellow().bold(),
-            "System may not meet minimum requirements (8GB RAM, 10GB disk)"
+            "{} System may not meet minimum requirements (8GB RAM, 10GB disk)",
+            "⚠️  Warning:".yellow().bold()
         );
         println!();
     }
@@ -107,7 +107,7 @@ pub async fn run(args: InitArgs, _config: &Config) -> anyhow::Result<()> {
     for (name, spec) in &recommended_models {
         let size = spec
             .size_bytes
-            .map(|b| format_bytes(b))
+            .map(format_bytes)
             .unwrap_or_else(|| "unknown".to_string());
         println!("    • {} ({})", name.cyan(), size.dimmed());
     }
@@ -349,8 +349,10 @@ async fn write_config(
     hardware: &synesis_models::hardware::HardwareInfo,
     base_dir: &std::path::Path,
 ) -> anyhow::Result<()> {
-    let mut config = Config::default();
-    config.data_dir = base_dir.to_string_lossy().to_string();
+    let mut config = Config {
+        data_dir: base_dir.to_string_lossy().to_string(),
+        ..Default::default()
+    };
 
     // Configure models based on hardware
     let vram_gb = hardware

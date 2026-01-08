@@ -58,24 +58,31 @@ pub enum TunnelState {
 
     /// Attempting to establish connection
     Connecting {
+        /// Timestamp when connection attempt started
         since: Instant,
     },
 
     /// Connected and healthy
     Connected {
+        /// Timestamp when connection was established
         since: Instant,
+        /// Current latency to cloud endpoint in milliseconds
         latency_ms: u32,
     },
 
     /// Connection lost, attempting to reconnect
     Reconnecting {
+        /// Current reconnection attempt number
         attempt: u32,
+        /// Error message from last failed connection attempt
         last_error: String,
     },
 
     /// Connection failed permanently
     Failed {
+        /// Error that caused permanent failure
         error: String,
+        /// Timestamp when failure occurred
         at: Instant,
     },
 }
@@ -98,14 +105,23 @@ impl TunnelState {
 /// Statistics for tunnel connection
 #[derive(Debug, Clone, Default)]
 pub struct TunnelStats {
+    /// Total bytes sent to cloud endpoint
     pub total_bytes_sent: u64,
+    /// Total bytes received from cloud endpoint
     pub total_bytes_received: u64,
+    /// Total heartbeat messages sent
     pub heartbeats_sent: u64,
+    /// Total heartbeat acknowledgments received
     pub heartbeats_acked: u64,
+    /// Total escalation requests sent
     pub requests_sent: u64,
+    /// Total successful requests
     pub requests_succeeded: u64,
+    /// Total failed requests
     pub requests_failed: u64,
+    /// Number of reconnection attempts
     pub reconnections: u32,
+    /// Average latency in milliseconds
     pub avg_latency_ms: u32,
 }
 
@@ -133,10 +149,8 @@ mod tests {
 
     #[test]
     fn test_tunnel_state_transitions() {
-        let mut state = TunnelState::Disconnected; // Initial state
-
         // Disconnected -> Connecting
-        state = TunnelState::Connecting {
+        let mut state = TunnelState::Connecting {
             since: Instant::now(),
         };
         assert!(matches!(state, TunnelState::Connecting { .. }));

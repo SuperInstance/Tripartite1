@@ -116,24 +116,35 @@ pub struct Message {
 /// User preferences for response generation
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct UserPreferences {
+    /// Preferred language for responses (e.g., "en", "es", "zh")
     pub preferred_language: Option<String>,
+    /// How verbose responses should be
     pub verbosity: Option<Verbosity>,
+    /// Tone/style of responses
     pub tone: Option<Tone>,
 }
 
+/// Response verbosity level
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum Verbosity {
+    /// Minimal, direct answers
     Concise,
+    /// Balanced detail level
     Normal,
+    /// Comprehensive explanations
     Detailed,
 }
 
+/// Response tone/style
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum Tone {
+    /// Formal and business-like
     Professional,
+    /// Friendly and conversational
     Casual,
+    /// Technical and precise
     Technical,
 }
 
@@ -176,6 +187,7 @@ pub struct TokenUsage {
 }
 
 impl TokenUsage {
+    /// Calculate total tokens (prompt + completion)
     pub fn total(&self) -> u32 {
         self.prompt + self.completion
     }

@@ -4,7 +4,6 @@
 
 use clap::Args;
 use owo_colors::OwoColorize;
-use std::path::PathBuf;
 use uuid::Uuid;
 
 use crate::config::Config;
@@ -123,7 +122,7 @@ pub async fn run(args: AskArgs, config: &Config) -> anyhow::Result<()> {
 
 /// Initialize the redactor with session context
 fn initialize_redactor(
-    config: &Config,
+    _config: &Config,
     _session_id: &str,
 ) -> anyhow::Result<synesis_privacy::Redactor> {
     use synesis_privacy::{Redactor, RedactorConfig, TokenVault};
@@ -176,7 +175,7 @@ async fn run_council(
 /// Reinflate tokens in the response
 fn reinflate_response(
     response: &str,
-    redactor: &mut synesis_privacy::Redactor,
+    _redactor: &mut synesis_privacy::Redactor,
 ) -> anyhow::Result<String> {
     // For now, the response stays redacted since reinflate needs to access the vault
     // which is handled internally by the redactor

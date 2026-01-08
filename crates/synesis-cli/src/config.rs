@@ -253,16 +253,19 @@ impl Default for Config {
 
 impl Config {
     /// Get the path to the privacy vault database
+    #[allow(dead_code)]
     pub fn privacy_vault_path(&self) -> Option<PathBuf> {
         Some(PathBuf::from(&self.data_dir).join("vault.db"))
     }
 
     /// Get the path to the knowledge database
+    #[allow(dead_code)]
     pub fn knowledge_db_path(&self) -> PathBuf {
         PathBuf::from(&self.data_dir).join("knowledge.db")
     }
 
     /// Get the models directory
+    #[allow(dead_code)]
     pub fn models_dir(&self) -> PathBuf {
         PathBuf::from(&self.data_dir).join("models")
     }

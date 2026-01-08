@@ -84,7 +84,7 @@ pub fn create_tls_config(
     let mut roots = RootCertStore::empty();
     roots.add_trust_anchors(webpki_roots::TLS_SERVER_ROOTS.iter().map(|ta| {
         rustls::OwnedTrustAnchor::from_subject_spki_name_constraints(
-            ta.subject.as_ref(),
+            ta.subject,
             ta.spki,
             ta.name_constraints.as_ref().map(|nc| *nc),
         )

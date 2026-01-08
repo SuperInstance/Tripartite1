@@ -1,6 +1,7 @@
 //! Display utilities for CLI output
 
-use comfy_table::{presets::UTF8_FULL, Cell, Color, Table};
+use comfy_table::presets::UTF8_FULL;
+use comfy_table::Table;
 use owo_colors::OwoColorize;
 
 use crate::commands::ask::CouncilResponse;
@@ -67,26 +68,31 @@ pub fn render_confidence_bar(value: f32, width: usize) -> String {
 }
 
 /// Print a formatted error message
+#[allow(dead_code)]
 pub fn print_error(msg: &str) {
     eprintln!("{} {}", "Error:".red().bold(), msg);
 }
 
-/// Print a formatted warning message  
+/// Print a formatted warning message
+#[allow(dead_code)]
 pub fn print_warning(msg: &str) {
     eprintln!("{} {}", "Warning:".yellow().bold(), msg);
 }
 
 /// Print a formatted success message
+#[allow(dead_code)]
 pub fn print_success(msg: &str) {
     println!("{} {}", "✓".green(), msg);
 }
 
 /// Print a formatted info message
+#[allow(dead_code)]
 pub fn print_info(msg: &str) {
     println!("{} {}", "ℹ".blue(), msg);
 }
 
 /// Create a styled table with standard preset
+#[allow(dead_code)]
 pub fn create_table() -> Table {
     let mut table = Table::new();
     table.load_preset(UTF8_FULL);
@@ -94,6 +100,7 @@ pub fn create_table() -> Table {
 }
 
 /// Format bytes as human readable
+#[allow(dead_code)]
 pub fn format_bytes(bytes: u64) -> String {
     const KB: u64 = 1024;
     const MB: u64 = KB * 1024;
@@ -114,6 +121,7 @@ pub fn format_bytes(bytes: u64) -> String {
 }
 
 /// Format duration as human readable
+#[allow(dead_code)]
 pub fn format_duration(secs: u64) -> String {
     if secs < 60 {
         format!("{}s", secs)
@@ -127,6 +135,7 @@ pub fn format_duration(secs: u64) -> String {
 }
 
 /// Format a timestamp as relative time
+#[allow(dead_code)]
 pub fn format_relative_time(timestamp: chrono::DateTime<chrono::Utc>) -> String {
     let now = chrono::Utc::now();
     let duration = now.signed_duration_since(timestamp);
@@ -145,15 +154,18 @@ pub fn format_relative_time(timestamp: chrono::DateTime<chrono::Utc>) -> String 
 }
 
 /// Print streaming response chunks
+#[allow(dead_code)]
 pub struct StreamingDisplay {
     chars_printed: usize,
 }
 
 impl StreamingDisplay {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self { chars_printed: 0 }
     }
 
+    #[allow(dead_code)]
     pub fn print_chunk(&mut self, chunk: &str) {
         print!("{}", chunk);
         self.chars_printed += chunk.len();
@@ -162,6 +174,7 @@ impl StreamingDisplay {
         std::io::stdout().flush().ok();
     }
 
+    #[allow(dead_code)]
     pub fn finish(&self) {
         println!();
     }

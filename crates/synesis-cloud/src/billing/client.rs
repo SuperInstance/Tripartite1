@@ -176,8 +176,11 @@ impl BillingClient {
 /// Cost calculation result
 #[derive(Debug, Clone)]
 pub struct CostCalculation {
+    /// Base cost before markup (in cents)
     pub base_cost_cents: u32,
+    /// Markup or licensing fee (in cents)
     pub markup_cents: u32,
+    /// Final charge including markup (in cents)
     pub final_charge_cents: u32,
 }
 

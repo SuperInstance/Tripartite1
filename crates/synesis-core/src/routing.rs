@@ -193,7 +193,8 @@ impl Router {
 /// Estimate token count (rough approximation)
 fn estimate_tokens(text: &str) -> u32 {
     // Rough estimate: ~4 characters per token for English
-    (text.len() / 4) as u32
+    // Cap at reasonable maximum (1M tokens) to prevent overflow
+    (text.len() / 4).min(1_000_000) as u32
 }
 
 #[cfg(test)]

@@ -107,33 +107,9 @@ impl Metrics {
         // Update total
         self.inner.total_response_time_ms.fetch_add(duration_ms, Ordering::Relaxed);
 
-        // Update min
-        let mut current_min = self.inner.min_response_time_ms.load(Ordering::Relaxed);
-        while duration_ms < current_min {
-            match self.inner.min_response_time_ms.compare_exchange(
-                current_min,
-                duration_ms,
-                Ordering::Relaxed,
-                Ordering::Relaxed,
-            ) {
-                Ok(_) => break,
-                Err(new_min) => current_min = new_min,
-            }
-        }
-
-        // Update max
-        let mut current_max = self.inner.max_response_time_ms.load(Ordering::Relaxed);
-        while duration_ms > current_max {
-            match self.inner.max_response_time_ms.compare_exchange(
-                current_max,
-                duration_ms,
-                Ordering::Relaxed,
-                Ordering::Relaxed,
-            ) {
-                Ok(_) => break,
-                Err(new_max) => current_max = new_max,
-            }
-        }
+        // Update min and max using fetch_min/fetch_max (more efficient than compare_exchange loop)
+        self.inner.min_response_time_ms.fetch_min(duration_ms, Ordering::Relaxed);
+        self.inner.max_response_time_ms.fetch_max(duration_ms, Ordering::Relaxed);
     }
 
     /// Record consensus reached on a specific round
@@ -317,7 +293,24 @@ impl Default for Metrics {
     }
 }
 
-/// A timer for measuring query duration
+/// A timer for measuring query duration.
+///
+/// # Usage
+///
+/// ```
+/// # use synesis_core::Metrics;
+/// # use std::time::Duration;
+/// # let metrics = Metrics::new();
+/// let timer = metrics.record_query_start();
+/// // ... do work ...
+/// // When done, call either:
+/// timer.finish_success();  // Records success
+/// // OR
+/// // timer.finish_failure();  // Records failure
+/// ```
+///
+/// **Important**: You must call exactly one of `finish_success()` or `finish_failure()`.
+/// If the timer is dropped without calling either, no metrics are recorded (intentional design).
 pub struct QueryTimer {
     metrics: Metrics,
     start: Instant,

@@ -110,10 +110,12 @@ impl Chunker {
                 if self.options.chunk_overlap > 0 {
                     let overlap_text = self.get_overlap_text(&current_chunk);
                     current_chunk = overlap_text;
-                    current_start = chunks.last().unwrap().end_offset - current_chunk.len() as u64;
+                    current_start = chunks.last()
+                        .map(|c| c.end_offset - current_chunk.len() as u64)
+                        .unwrap_or(0);
                 } else {
                     current_chunk = String::new();
-                    current_start = chunks.last().unwrap().end_offset;
+                    current_start = chunks.last().map(|c| c.end_offset).unwrap_or(0);
                 }
             }
 
@@ -155,10 +157,12 @@ impl Chunker {
                 if self.options.chunk_overlap > 0 {
                     let overlap_text = self.get_overlap_text(&current_chunk);
                     current_chunk = overlap_text;
-                    current_start = chunks.last().unwrap().end_offset - current_chunk.len() as u64;
+                    current_start = chunks.last()
+                        .map(|c| c.end_offset - current_chunk.len() as u64)
+                        .unwrap_or(0);
                 } else {
                     current_chunk = String::new();
-                    current_start = chunks.last().unwrap().end_offset;
+                    current_start = chunks.last().map(|c| c.end_offset).unwrap_or(0);
                 }
             }
 
@@ -252,7 +256,12 @@ impl Default for Chunker {
 
 /// Estimate token count (rough approximation: ~4 chars per token for English)
 pub fn estimate_tokens(text: &str) -> u32 {
-    (text.len() / 4).max(1) as u32
+    let tokens = text.len() / 4;
+    if tokens == 0 {
+        return 1;
+    }
+    // Use saturating conversion to avoid overflow for very large strings
+    u32::try_from(tokens).unwrap_or(u32::MAX)
 }
 
 /// Split text into sentences (simple implementation)

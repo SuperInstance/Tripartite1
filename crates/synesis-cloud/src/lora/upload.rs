@@ -50,7 +50,7 @@ impl LoraUploadClient {
 
         // Read LoRA file
         let data = tokio::fs::read(&lora.path).await
-            .map_err(|e| CloudError::Io(e))?;
+            .map_err(CloudError::Io)?;
 
         // Calculate chunks
         let total_chunks = (data.len() / self.chunk_size) + 1;
@@ -197,6 +197,7 @@ mod tests {
     use super::*;
     use std::path::PathBuf;
 
+    #[allow(dead_code)]
     fn make_test_lora() -> LocalLora {
         LocalLora {
             id: "lora-123".to_string(),

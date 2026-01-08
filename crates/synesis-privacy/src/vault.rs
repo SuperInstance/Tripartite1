@@ -94,6 +94,30 @@ impl TokenVault {
     /// The token that can be used to retrieve the original value later
     #[instrument(skip(self, original), fields(category, session_id))]
     pub fn store(&self, category: &str, original: &str, session_id: &str) -> PrivacyResult<String> {
+        // Validate category
+        if category.is_empty() {
+            return Err(PrivacyError::Internal("Category cannot be empty".to_string()));
+        }
+
+        if category.len() > 50 {
+            return Err(PrivacyError::Internal("Category too long (max 50 chars)".to_string()));
+        }
+
+        if !category.chars().all(|c| c.is_alphanumeric() || c == '_') {
+            return Err(PrivacyError::Internal(
+                "Category must contain only alphanumeric characters and underscores".to_string()
+            ));
+        }
+
+        // Validate session_id
+        if session_id.is_empty() {
+            return Err(PrivacyError::Internal("Session ID cannot be empty".to_string()));
+        }
+
+        if session_id.len() > 255 {
+            return Err(PrivacyError::Internal("Session ID too long (max 255 chars)".to_string()));
+        }
+
         let conn = self
             .conn
             .lock()
@@ -105,6 +129,14 @@ impl TokenVault {
             .lock()
             .map_err(|e| PrivacyError::Internal(format!("Lock poisoned: {}", e)))?;
         let counter = counters.entry(category.to_string()).or_insert(0);
+
+        // Check for overflow before incrementing
+        if *counter == u32::MAX {
+            return Err(PrivacyError::Internal(
+                format!("Token counter overflow for category '{}'. This indicates an excessive number of redactions.", category)
+            ));
+        }
+
         *counter += 1;
         let token_number = *counter;
         drop(counters);
@@ -134,7 +166,17 @@ impl TokenVault {
     /// * None if token not found
     #[instrument(skip(self), fields(token))]
     pub fn retrieve(&self, token: &str) -> Option<String> {
-        let conn = self.conn.lock().ok()?;
+        let conn = match self.conn.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => {
+                tracing::error!(
+                    %token,
+                    "Mutex is poisoned, attempting to recover from retrieve"
+                );
+                // Attempt to recover by taking the lock
+                poisoned.into_inner()
+            }
+        };
 
         debug!(%token, "Retrieving token from vault");
 

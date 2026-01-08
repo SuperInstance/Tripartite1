@@ -9,10 +9,8 @@ use serde::{Deserialize, Serialize};
 pub enum CollaboratorRole {
     /// Can view agent interactions
     Viewer,
-
     /// Can add comments/feedback
     Commenter,
-
     /// Can modify prompts and settings
     Editor,
 }
@@ -139,22 +137,29 @@ pub struct Handover {
     pub incentive: HandoverIncentive,
 }
 
+/// Handover state
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum HandoverState {
+    /// Handover initiated
     Pending,
+    /// Email sent to recipient
     EmailSent,
+    /// Handover accepted by recipient
     Accepted,
+    /// Handover completed
     Completed,
+    /// Handover expired
     Expired,
+    /// Handover cancelled
     Cancelled,
 }
 
+/// Handover incentive pricing
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HandoverIncentive {
-    /// First year price
+    /// Discounted price for first year
     pub first_year_price: f64,
-
     /// Regular price after first year
     pub regular_price: f64,
 }

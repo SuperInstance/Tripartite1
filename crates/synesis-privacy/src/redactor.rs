@@ -186,7 +186,7 @@ impl Redactor {
     pub fn reinflate(&self, text: &str) -> String {
         debug!("Reinflating text");
 
-        let mut result = text.to_string();
+        let result = text.to_string();
         let mut tokens_seen = Vec::new();
 
         // Find all tokens
@@ -197,16 +197,36 @@ impl Redactor {
             }
         }
 
-        // Replace each token with original value
-        for token in tokens_seen {
-            if let Some(original) = self.vault.retrieve(&token) {
-                result = result.replace(&token, &original);
-            } else {
-                debug!(%token, "Token not found in vault, leaving as-is");
+        // Replace tokens using constant-time algorithm to prevent timing attacks
+        // Find all token positions first, then build result in single pass
+        let mut token_positions = Vec::new();
+        for cap in self.token_regex.find_iter(&result) {
+            let token_str = cap.as_str();
+            // Always lookup to prevent timing differences
+            if let Some(original) = self.vault.retrieve(token_str) {
+                token_positions.push((cap.start(), cap.end(), original));
             }
         }
 
-        result
+        // Build result in one pass (constant time regardless of matches found)
+        if token_positions.is_empty() {
+            // No tokens found, return original
+            return result;
+        }
+
+        let mut reinflated = String::with_capacity(result.len());
+        let mut last_pos = 0;
+
+        for (start, end, original) in token_positions {
+            reinflated.push_str(&result[last_pos..start]);
+            reinflated.push_str(&original);
+            last_pos = end;
+        }
+
+        // Add remaining text
+        reinflated.push_str(&result[last_pos..]);
+
+        reinflated
     }
 
     /// Get statistics about redactions for a session

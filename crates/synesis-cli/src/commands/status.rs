@@ -4,7 +4,6 @@
 
 use clap::Args;
 use comfy_table::{presets::UTF8_FULL, Table};
-use owo_colors::OwoColorize;
 use std::fs;
 use std::path::PathBuf;
 
@@ -131,38 +130,36 @@ fn get_models_info(config: &Config) -> anyhow::Result<ModelsInfo> {
     if models_dir.exists() {
         let entries = fs::read_dir(&models_dir)?;
 
-        for entry in entries {
-            if let Ok(entry) = entry {
-                let path = entry.path();
-                if path.is_file() {
-                    let file_name = path
-                        .file_name()
-                        .and_then(|n| n.to_str())
-                        .unwrap_or("unknown");
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_file() {
+                let file_name = path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("unknown");
 
-                    // Check for common model formats
-                    if file_name.ends_with(".gguf") || file_name.ends_with(".bin") {
-                        let metadata = fs::metadata(&path)?;
-                        let size_gb = metadata.len() as f64 / (1024.0 * 1024.0 * 1024.0);
-                        let size_str = format!("{:.1}", size_gb);
+                // Check for common model formats
+                if file_name.ends_with(".gguf") || file_name.ends_with(".bin") {
+                    let metadata = fs::metadata(&path)?;
+                    let size_gb = metadata.len() as f64 / (1024.0 * 1024.0 * 1024.0);
+                    let size_str = format!("{:.1}", size_gb);
 
-                        // Extract model name from filename
-                        let model_name = file_name
-                            .replace("-q4", "")
-                            .replace("-q5", "")
-                            .replace("-q8", "")
-                            .replace("-f16", "")
-                            .replace(".gguf", "")
-                            .replace(".bin", "")
-                            .to_string();
+                    // Extract model name from filename
+                    let model_name = file_name
+                        .replace("-q4", "")
+                        .replace("-q5", "")
+                        .replace("-q8", "")
+                        .replace("-f16", "")
+                        .replace(".gguf", "")
+                        .replace(".bin", "")
+                        .to_string();
 
-                        models.push(ModelInfo {
-                            name: model_name.clone(),
-                            size_gb: size_str,
-                            status: "ready".to_string(),
-                            loaded: false, // TODO: Check if actually loaded in memory
-                        });
-                    }
+                    models.push(ModelInfo {
+                        name: model_name.clone(),
+                        size_gb: size_str,
+                        status: "ready".to_string(),
+                        loaded: false, // TODO: Check if actually loaded in memory
+                    });
                 }
             }
         }

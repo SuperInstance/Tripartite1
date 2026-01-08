@@ -1,6 +1,6 @@
 //! Manifest management commands
 
-use clap::{Parser, Subcommand};
+use clap::Subcommand;
 use synesis_models::{HardwareDetector, HardwareManifest};
 
 use crate::config::Config;
@@ -175,9 +175,9 @@ async fn run_list() -> anyhow::Result<()> {
                 .map_err(|e| anyhow::anyhow!("Failed to read manifests directory: {}", e))?;
 
             let mut found_custom = false;
-            for entry in entries.filter_map(|e| e.ok()) {
+            for entry in entries.flatten() {
                 let path = entry.path();
-                if path.extension().map_or(false, |ext| ext == "json") {
+                if path.extension().is_some_and(|ext| ext == "json") {
                     found_custom = true;
                     let name = path
                         .file_stem()
