@@ -1,15 +1,16 @@
-//! Embedding Generation and Document Chunking
+//! Embedding Generation with BGE-Micro (Hybrid Approach)
 //!
-//! Provides embedding generation for text chunks with intelligent chunking strategies.
-//! Supports local models (BGE-Micro-v1.5) and cloud fallback.
+//! Provides embedding generation using BGE-Micro-v2 model.
+//! Currently uses SHA256 placeholder embeddings (384 dimensions).
+//! Will integrate llama.cpp for real embeddings in future update.
 
 use async_trait::async_trait;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::KnowledgeResult;
+use crate::{KnowledgeError, KnowledgeResult};
 
 /// Document type for chunking strategy selection
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -94,9 +95,18 @@ impl EmbeddingPipeline {
             model_path
         );
 
-        // For now, create local embedder (BGE-Micro-v1.5)
-        // In production, this would load the actual model from model_path
-        let embedder = Arc::new(LocalEmbedder::new("bge-micro"));
+        // Try to load real BGE-Micro model, fall back to placeholder
+        let embedder: Arc<dyn EmbeddingProvider> = match LocalEmbedder::load(model_path) {
+            Ok(embedder) => {
+                info!("Using real BGE-Micro model");
+                Arc::new(embedder)
+            },
+            Err(e) => {
+                warn!("Failed to load real embedding model: {}", e);
+                warn!("Using placeholder embeddings (SHA256-based)");
+                Arc::new(PlaceholderEmbedder::new(384))
+            }
+        };
 
         let chunker = DocumentChunker::default();
 
@@ -186,9 +196,6 @@ impl DocumentChunker {
 
     /// Chunk code file by function/class (placeholder for tree-sitter)
     fn chunk_code(&self, content: &str) -> Vec<Chunk> {
-        // TODO: Integrate tree-sitter for syntax-aware chunking
-        // For now, use heuristic-based chunking by common patterns
-
         debug!("Chunking code file (tree-sitter integration pending)");
 
         let mut chunks = Vec::new();
@@ -425,95 +432,93 @@ pub trait EmbeddingProvider: Send + Sync {
     fn model_name(&self) -> &str;
 }
 
-/// Local embedding model using BGE-Micro-v1.5
+/// BGE-Micro embedding model wrapper
+///
+/// Attempts to load real BGE-Micro model from disk.
+/// If unavailable, provides clear error message for fallback.
 pub struct LocalEmbedder {
+    _model_path: PathBuf,
     model_name: String,
     dimensions: u32,
-    model_path: PathBuf,
-    // TODO: Add actual model handle when integrating with real model
-    // model: Option<BgeModel>,
 }
 
 impl LocalEmbedder {
-    /// Create a new local embedder
-    pub fn new(model_name: &str) -> Self {
-        // Determine dimensions based on model
-        let dimensions = match model_name {
-            "bge-micro" | "bge-micro-v1.5" => 384,
-            "bge-small" | "bge-small-en-v1.5" => 384,
-            "bge-base" | "bge-base-en-v1.5" => 768,
-            "bge-large" | "bge-large-en-v1.5" => 1024,
-            _ => 384,
-        };
+    /// Load BGE-Micro model from disk
+    pub fn load(model_path: &Path) -> KnowledgeResult<Self> {
+        info!("Attempting to load BGE-Micro model from: {:?}", model_path);
 
-        // Default model path (would be ~/.synesis/models/ in production)
-        let model_path = PathBuf::from(format!("/.synesis/models/{}", model_name));
-
-        Self {
-            model_name: model_name.to_string(),
-            dimensions,
-            model_path,
-        }
-    }
-
-    /// Create with custom model path
-    pub fn with_path(model_name: &str, model_path: &Path) -> Self {
-        let mut embedder = Self::new(model_name);
-        embedder.model_path = model_path.to_path_buf();
-        embedder
-    }
-
-    /// Load the model from disk
-    pub async fn load(&mut self) -> KnowledgeResult<()> {
-        info!(
-            "Loading embedding model '{}' from {:?}",
-            self.model_name, self.model_path
-        );
-
-        // TODO: Actually load the BGE-Micro-v1.5 model
-        // This would integrate with:
-        // - candle or burn frameworks for Rust inference
-        // - OR llama.cpp bindings
-        // - OR Python bridge to sentence-transformers
-
-        // For now, simulate loading
-        if !self.model_path.exists() {
-            debug!(
-                "Model file not found at {:?}, using placeholder mode",
-                self.model_path
-            );
+        // Check if model file exists
+        if !model_path.exists() {
+            return Err(KnowledgeError::EmbeddingError(format!(
+                "Model file not found: {:?}. Download with: synesis model download bge-micro",
+                model_path
+            )));
         }
 
-        Ok(())
-    }
-
-    /// Check if model is loaded
-    pub fn is_loaded(&self) -> bool {
-        // TODO: Return actual model state
-        true
+        // TODO: Integrate llama.cpp when API is stable
+        // For now, return error to trigger fallback to placeholder embeddings
+        Err(KnowledgeError::EmbeddingError(
+            "Real embedding model not yet integrated. Using placeholder embeddings.".to_string()
+        ))
     }
 }
 
 #[async_trait]
 impl EmbeddingProvider for LocalEmbedder {
+    async fn embed(&self, _text: &str) -> KnowledgeResult<Vec<f32>> {
+        // This should not be reached as load() returns error
+        Err(KnowledgeError::EmbeddingError(
+            "Real embedding model not available".to_string()
+        ))
+    }
+
+    async fn embed_batch(&self, _texts: &[&str]) -> KnowledgeResult<Vec<Vec<f32>>> {
+        Err(KnowledgeError::EmbeddingError(
+            "Real embedding model not available".to_string()
+        ))
+    }
+
+    fn dimensions(&self) -> u32 {
+        self.dimensions
+    }
+
+    fn model_name(&self) -> &str {
+        &self.model_name
+    }
+}
+
+/// Placeholder embedding provider using SHA256
+///
+/// Generates deterministic 384-dimensional embeddings using SHA256 hash.
+/// This provides consistent embeddings for testing and development.
+pub struct PlaceholderEmbedder {
+    dimensions: u32,
+    model_name: String,
+}
+
+impl PlaceholderEmbedder {
+    /// Create a new placeholder embedder
+    pub fn new(dimensions: u32) -> Self {
+        Self {
+            dimensions,
+            model_name: "placeholder-sha256".to_string(),
+        }
+    }
+}
+
+#[async_trait]
+impl EmbeddingProvider for PlaceholderEmbedder {
     async fn embed(&self, text: &str) -> KnowledgeResult<Vec<f32>> {
-        debug!("Generating embedding for {} chars", text.len());
-
-        // TODO: Actually generate embedding using BGE-Micro-v1.5 model
-        // For now, use deterministic placeholder for testing
-        let embedding = generate_placeholder_embedding(text, self.dimensions);
-
-        Ok(embedding)
+        debug!("Generating placeholder embedding for {} chars", text.len());
+        Ok(generate_placeholder_embedding(text, self.dimensions))
     }
 
     async fn embed_batch(&self, texts: &[&str]) -> KnowledgeResult<Vec<Vec<f32>>> {
-        debug!("Generating embeddings for {} texts", texts.len());
-
+        debug!("Generating placeholder embeddings for {} texts", texts.len());
         let mut results = Vec::with_capacity(texts.len());
         for text in texts {
             results.push(self.embed(text).await?);
         }
-
         Ok(results)
     }
 
@@ -607,42 +612,13 @@ impl Default for BatchOptions {
 /// Tree-sitter placeholder module for code chunking
 ///
 /// This module will be used for syntax-aware code chunking in the future.
-/// When integrating, add tree-sitter as a dependency and implement:
-///
-/// ```rust,ignore
-/// use tree_sitter::{Parser, Language, Node};
-///
-/// pub fn chunk_code_with_tree_sitter(
-///     content: &str,
-///     language: &Language
-/// ) -> Vec<Chunk> {
-///     let mut parser = Parser::new();
-///     parser.set_language(language).unwrap();
-///
-///     let tree = parser.parse(content, None).unwrap();
-///     let root = tree.root_node();
-///
-///     // Extract function/class definitions
-///     extract_semantic_chunks(root, content)
-/// }
-/// ```
 pub mod tree_sitter_placeholder {
     use super::Chunk;
 
     /// Placeholder for tree-sitter based code chunking
     ///
     /// TODO: Implement actual tree-sitter integration
-    /// Required dependencies:
-    /// - tree-sitter = "0.20"
-    /// - tree-sitter-rust
-    /// - tree-sitter-python
-    /// - tree-sitter-javascript
     pub fn chunk_code_syntax_aware(_content: &str, _language: &str) -> Vec<Chunk> {
-        // This is a placeholder for future implementation
-        // When ready, this will:
-        // 1. Parse code using tree-sitter
-        // 2. Extract function/class definitions
-        // 3. Create semantic chunks based on AST
         Vec::new()
     }
 }
@@ -679,21 +655,17 @@ More content here."#;
         let chunks = chunker.chunk(content, DocType::Markdown);
 
         assert!(!chunks.is_empty());
-        // Should have chunks based on headings
         assert!(chunks.iter().any(|c| c.content.contains("Introduction")));
         assert!(chunks.iter().any(|c| c.content.contains("Getting Started")));
     }
 
     #[test]
     fn test_sliding_window_chunking() {
-        let content = "word ".repeat(600); // 600 words
+        let content = "word ".repeat(600);
         let chunker = DocumentChunker::default();
         let chunks = chunker.chunk(&content, DocType::Text);
 
-        // Should create multiple chunks with overlap
         assert!(chunks.len() > 1);
-
-        // First chunk should have max_words or all if less
         assert!(chunks[0].content.split_whitespace().count() <= chunker.max_words);
     }
 
@@ -715,7 +687,6 @@ pub fn world() {
         let chunker = DocumentChunker::default();
         let chunks = chunker.chunk(content, DocType::Code);
 
-        // Should find function/class chunks
         assert!(!chunks.is_empty());
     }
 
@@ -734,7 +705,6 @@ pub fn world() {
         let mut embedding = vec![3.0, 4.0];
         normalize_embedding(&mut embedding);
 
-        // Should be unit length now
         let norm: f32 = embedding.iter().map(|x| x * x).sum::<f32>().sqrt();
         assert!((norm - 1.0).abs() < 0.0001);
     }
@@ -751,8 +721,8 @@ pub fn world() {
     }
 
     #[tokio::test]
-    async fn test_local_embedder() {
-        let embedder = LocalEmbedder::new("bge-micro");
+    async fn test_placeholder_embedder() {
+        let embedder = PlaceholderEmbedder::new(384);
         assert_eq!(embedder.dimensions(), 384);
 
         let embedding = embedder.embed("test text").await.unwrap();

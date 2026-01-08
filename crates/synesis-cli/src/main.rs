@@ -38,6 +38,10 @@ pub enum Commands {
     /// Show system status
     Status(commands::status::StatusArgs),
 
+    /// Display metrics and performance data
+    #[command(subcommand)]
+    Metrics(commands::metrics::MetricsCommands),
+
     /// Manage hardware manifests
     #[command(subcommand)]
     Manifest(commands::manifest::ManifestCommands),
@@ -81,6 +85,7 @@ async fn main() -> anyhow::Result<()> {
         Commands::Init(args) => commands::init::run(args, &config).await,
         Commands::Ask(args) => commands::ask::run(args, &config).await,
         Commands::Status(args) => commands::status::run(args, &config).await,
+        Commands::Metrics(cmd) => commands::metrics::run(cmd).await,
         Commands::Manifest(cmd) => commands::manifest::run(cmd, &config).await,
         Commands::Model(cmd) => commands::model::run(cmd, &config).await,
         Commands::Knowledge(cmd) => commands::knowledge::run(cmd, &config).await,

@@ -7,16 +7,18 @@
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use tracing::{debug, info, instrument, warn};
 
 use super::{Agent, AgentConfig, AgentInput, AgentOutput};
 use crate::manifest::A2AManifest;
-use crate::{CoreError, CoreResult};
+use crate::{SynesisError as CoreError, SynesisResult as CoreResult};
 
 /// Logos agent for logical reasoning and solution synthesis
+#[derive(Clone)]
 pub struct LogosAgent {
     config: AgentConfig,
-    ready: bool,
+    ready: Arc<std::sync::atomic::AtomicBool>,
     // TODO: Add these when integrating with actual modules
     // model: LocalModel,
     // knowledge_vault: Option<KnowledgeVault>,
@@ -31,7 +33,7 @@ impl LogosAgent {
     pub fn new(config: AgentConfig) -> Self {
         Self {
             config,
-            ready: false,
+            ready: Arc::new(std::sync::atomic::AtomicBool::new(false)),
             rag_enabled: true, // RAG enabled by default
         }
     }
@@ -40,7 +42,7 @@ impl LogosAgent {
     pub fn without_rag(config: AgentConfig) -> Self {
         Self {
             config,
-            ready: false,
+            ready: Arc::new(std::sync::atomic::AtomicBool::new(false)),
             rag_enabled: false,
         }
     }
@@ -53,7 +55,7 @@ impl LogosAgent {
         // let model = synesis_models::load(&self.config.model).await?;
         // self.model = model;
 
-        self.ready = true;
+        self.ready.store(true, std::sync::atomic::Ordering::SeqCst);
         Ok(())
     }
 
@@ -419,7 +421,7 @@ impl Agent for LogosAgent {
     }
 
     async fn process(&self, input: AgentInput) -> CoreResult<AgentOutput> {
-        if !self.ready {
+        if !self.is_ready() {
             return Err(CoreError::AgentError("Logos not initialized".to_string()));
         }
 
@@ -496,7 +498,7 @@ impl Agent for LogosAgent {
     }
 
     fn is_ready(&self) -> bool {
-        self.ready
+        self.ready.load(std::sync::atomic::Ordering::SeqCst)
     }
 
     fn model(&self) -> &str {

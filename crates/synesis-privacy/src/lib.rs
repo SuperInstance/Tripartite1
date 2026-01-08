@@ -25,6 +25,9 @@ pub use patterns::{Pattern, PatternMatch, PatternSet, PatternType};
 pub use redactor::{RedactionResult, Redactor, RedactorConfig};
 pub use vault::{SessionStats, TokenVault};
 
+/// Result type for privacy operations
+pub type PrivacyResult<T> = std::result::Result<T, PrivacyError>;
+
 /// Privacy error types
 #[derive(Debug, thiserror::Error)]
 pub enum PrivacyError {
@@ -43,9 +46,6 @@ pub enum PrivacyError {
     #[error("Internal error: {0}")]
     Internal(String),
 }
-
-/// Result type for privacy operations
-pub type PrivacyResult<T> = Result<T, PrivacyError>;
 
 /// Statistics about redaction
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]

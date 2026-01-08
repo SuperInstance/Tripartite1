@@ -14,22 +14,25 @@
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use tracing::{debug, info, instrument};
 
 use super::{Agent, AgentConfig, AgentInput, AgentOutput};
-use crate::{CoreError, CoreResult};
+use crate::{SynesisError as CoreError, SynesisResult as CoreResult};
 
 /// Pathos agent for intent extraction
+#[derive(Clone)]
 pub struct PathosAgent {
     config: AgentConfig,
-    ready: bool,
+    ready: Arc<std::sync::atomic::AtomicBool>,
     // Placeholder for model - will be integrated with synesis-models
-    model: Option<ModelPlaceholder>,
+    model: Arc<Option<ModelPlaceholder>>,
 }
 
 /// Placeholder for the actual model interface
 /// This will be replaced with real model inference later
 #[allow(dead_code)]
+#[derive(Clone)]
 struct ModelPlaceholder {
     name: String,
 }
@@ -39,8 +42,8 @@ impl PathosAgent {
     pub fn new(config: AgentConfig) -> Self {
         Self {
             config,
-            ready: false,
-            model: None,
+            ready: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            model: Arc::new(None),
         }
     }
 
@@ -64,11 +67,11 @@ impl PathosAgent {
 
         // TODO: Load actual model via synesis-models crate
         // For now, create a placeholder
-        self.model = Some(ModelPlaceholder {
+        *Arc::make_mut(&mut self.model) = Some(ModelPlaceholder {
             name: self.config.model.clone(),
         });
 
-        self.ready = true;
+        self.ready.store(true, std::sync::atomic::Ordering::SeqCst);
         Ok(())
     }
 
@@ -511,7 +514,7 @@ impl Agent for PathosAgent {
     }
 
     async fn process(&self, input: AgentInput) -> CoreResult<AgentOutput> {
-        if !self.ready {
+        if !self.is_ready() {
             return Err(CoreError::AgentError("Pathos not initialized".to_string()));
         }
 
@@ -564,7 +567,7 @@ impl Agent for PathosAgent {
     }
 
     fn is_ready(&self) -> bool {
-        self.ready
+        self.ready.load(std::sync::atomic::Ordering::SeqCst)
     }
 
     fn model(&self) -> &str {

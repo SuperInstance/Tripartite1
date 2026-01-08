@@ -6,5 +6,6 @@ pub mod config;
 pub mod init;
 pub mod knowledge;
 pub mod manifest;
+pub mod metrics;
 pub mod model;
 pub mod status;

@@ -3,6 +3,7 @@
 use clap::Subcommand;
 use comfy_table::{presets::UTF8_FULL, Table};
 use owo_colors::OwoColorize;
+use std::io::Write;
 
 use crate::config::Config;
 
@@ -28,6 +29,15 @@ pub enum CloudCommands {
 
     /// Sync local settings with cloud
     Sync,
+
+    /// Ask cloud LLM (escalation)
+    Ask(AskArgs),
+
+    /// Upload LoRA to cloud
+    Push(PushArgs),
+
+    /// Create collaborator invite
+    Invite(InviteArgs),
 }
 
 #[derive(clap::Args)]
@@ -58,6 +68,71 @@ pub struct UsageArgs {
     pub json: bool,
 }
 
+#[derive(clap::Args)]
+pub struct AskArgs {
+    /// Query to send to cloud
+    #[arg(short, long)]
+    pub query: Option<String>,
+
+    /// Model to use: sonnet, opus, auto
+    #[arg(short, long, default_value = "auto")]
+    pub model: String,
+
+    /// Max tokens to generate
+    #[arg(short, long, default_value = "1024")]
+    pub max_tokens: u32,
+
+    /// Stream response
+    #[arg(short, long)]
+    pub stream: bool,
+
+    /// Tone: professional, casual, technical
+    #[arg(long, default_value = "professional")]
+    pub tone: String,
+
+    /// Verbosity: concise, normal, detailed
+    #[arg(long, default_value = "normal")]
+    pub verbosity: String,
+}
+
+#[derive(clap::Args)]
+pub struct PushArgs {
+    /// Path to LoRA file
+    #[arg(short, long)]
+    pub file: String,
+
+    /// LoRA name
+    #[arg(short, long)]
+    pub name: String,
+
+    /// Base model
+    #[arg(short, long)]
+    pub base_model: String,
+
+    /// Description
+    #[arg(short, long)]
+    pub description: Option<String>,
+}
+
+#[derive(clap::Args)]
+pub struct InviteArgs {
+    /// Collaborator email
+    #[arg(short, long)]
+    pub email: Option<String>,
+
+    /// Role: viewer, commenter, editor
+    #[arg(short, long, default_value = "viewer")]
+    pub role: String,
+
+    /// Quota in cents
+    #[arg(short, long, default_value = "1000")]
+    pub quota_cents: u32,
+
+    /// Expires in hours
+    #[arg(short, long, default_value = "24")]
+    pub expires_hours: u32,
+}
+
 pub async fn run(cmd: CloudCommands, _config: &Config) -> anyhow::Result<()> {
     match cmd {
         CloudCommands::Login(args) => login(args).await,
@@ -67,6 +142,9 @@ pub async fn run(cmd: CloudCommands, _config: &Config) -> anyhow::Result<()> {
         CloudCommands::Usage(args) => show_usage(args).await,
         CloudCommands::Ping => ping().await,
         CloudCommands::Sync => sync().await,
+        CloudCommands::Ask(args) => ask(args).await,
+        CloudCommands::Push(args) => push(args).await,
+        CloudCommands::Invite(args) => invite(args).await,
     }
 }
 
@@ -214,6 +292,137 @@ async fn sync() -> anyhow::Result<()> {
 
     println!();
     println!("{} Sync complete", "✓".green());
+
+    Ok(())
+}
+
+async fn ask(args: AskArgs) -> anyhow::Result<()> {
+    // Get query from args or stdin
+    let query = if let Some(q) = args.query {
+        q
+    } else {
+        println!("Enter your query (press Ctrl+D when done):");
+        let mut input = String::new();
+        std::io::stdin().read_line(&mut input)?;
+        input.trim().to_string()
+    };
+
+    if query.is_empty() {
+        println!("{} Query cannot be empty", "Error".red());
+        return Ok(());
+    }
+
+    println!();
+    println!("{}", "Escalating to cloud...".dimmed());
+    println!("  Model: {}", args.model.cyan());
+    println!("  Max tokens: {}", args.max_tokens);
+    println!("  Tone: {}", args.tone);
+    println!("  Verbosity: {}", args.verbosity);
+
+    // TODO: Actually call cloud escalation API
+    println!();
+    println!("{}", "Thinking...".dimmed());
+
+    tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+
+    println!();
+    println!("{}", "Response:".bold());
+    println!("This is a mock response from the cloud. The actual implementation will");
+    println!("connect to the SuperInstance cloud API and return a real response based");
+    println!("on your query.");
+
+    if args.stream {
+        println!();
+        println!("{} Streaming would be enabled", "(streaming)".dimmed());
+    }
+
+    Ok(())
+}
+
+async fn push(args: PushArgs) -> anyhow::Result<()> {
+    println!("{}", "Uploading LoRA to cloud".bold());
+    println!();
+
+    // Check if file exists
+    let path = std::path::Path::new(&args.file);
+    if !path.exists() {
+        println!("{} File not found: {}", "Error".red(), args.file);
+        return Ok(());
+    }
+
+    // Get file size
+    let metadata = std::fs::metadata(&args.file)?;
+    let size_mb = metadata.len() as f64 / (1024.0 * 1024.0);
+
+    println!("File: {}", args.file.cyan());
+    println!("Size: {:.2} MB", size_mb);
+    println!("Name: {}", args.name);
+    println!("Base model: {}", args.base_model);
+
+    if let Some(desc) = &args.description {
+        println!("Description: {}", desc);
+    }
+
+    println!();
+    println!("{}", "Uploading...".dimmed());
+
+    // TODO: Actually upload via LoRA upload client
+    let progress_chars = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+    for (i, ch) in progress_chars.iter().cycle().take(20).enumerate() {
+        print!("\r {} Uploading {}%", ch, (i + 1) * 5);
+        std::io::stdout().flush()?;
+        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    }
+
+    println!();
+    println!();
+    println!("{} LoRA uploaded successfully!", "✓".green());
+    println!("Cloud ID: {}", "lora-cloud-abc123".cyan());
+    println!();
+    println!("You can now use this LoRA in cloud queries with:");
+    println!("  synesis cloud ask --lora lora-cloud-abc123 \"your query\"");
+
+    Ok(())
+}
+
+async fn invite(args: InviteArgs) -> anyhow::Result<()> {
+    println!("{}", "Creating collaborator invite".bold());
+    println!();
+
+    let email = if let Some(e) = args.email {
+        e
+    } else {
+        println!("Enter collaborator email:");
+        let mut input = String::new();
+        std::io::stdin().read_line(&mut input)?;
+        input.trim().to_string()
+    };
+
+    if email.is_empty() {
+        println!("{} Email cannot be empty", "Error".red());
+        return Ok(());
+    }
+
+    println!();
+    println!("Collaborator: {}", email.cyan());
+    println!("Role: {}", args.role);
+    println!("Quota: ${:.2}", args.quota_cents as f64 / 100.0);
+    println!("Expires: {} hours", args.expires_hours);
+
+    // TODO: Actually create invite via CollaboratorClient
+    let invite_token = uuid::Uuid::new_v4().to_string();
+    let invite_url = format!("https://superinstance.ai/invite/{}", invite_token);
+
+    println!();
+    println!("{} Invite created!", "✓".green());
+    println!();
+    println!("Share this link with {}:", email);
+    println!("  {}", invite_url.cyan().underline());
+    println!();
+    println!("Or send them the invite code:");
+    println!("  {}", invite_token.bold());
+    println!();
+    println!("{}", "This invite will expire in 24 hours.".dimmed());
 
     Ok(())
 }

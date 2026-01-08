@@ -92,11 +92,14 @@ pub mod vault;
 pub mod watcher;
 
 pub use chunker::{Chunk, ChunkOptions, Chunker};
-pub use embeddings::{EmbeddingProvider, LocalEmbedder};
-pub use indexer::{DocumentIndexer, IndexResult};
+pub use embeddings::{EmbeddingProvider, LocalEmbedder, PlaceholderEmbedder};
+pub use indexer::{DocumentIndexer, IndexCommand, IndexerConfig, IndexerHandle, IndexResult};
 pub use search::{SearchOptions, SearchResult, VectorSearch};
 pub use vault::{ChunkResult, Document, KnowledgeVault, VaultStats};
 pub use watcher::{FileWatcher, WatchConfig};
+
+/// Result type for knowledge operations
+pub type KnowledgeResult<T> = std::result::Result<T, KnowledgeError>;
 
 /// Knowledge error types
 #[derive(Debug, thiserror::Error)]
@@ -125,6 +128,3 @@ pub enum KnowledgeError {
     #[error("Internal error: {0}")]
     Internal(String),
 }
-
-/// Result type for knowledge operations
-pub type KnowledgeResult<T> = Result<T, KnowledgeError>;

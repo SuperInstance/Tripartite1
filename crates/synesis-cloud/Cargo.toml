@@ -1,0 +1,59 @@
+[package]
+name = "synesis-cloud"
+version = "0.2.0"
+edition = "2021"
+authors = ["SuperInstance AI"]
+description = "Cloud connectivity and QUIC tunnel for SuperInstance AI platform"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/SuperInstance/Tripartite1"
+readme = "../../README.md"
+keywords = ["cloud", "quic", "ai", "superinstance"]
+categories = ["network-programming", "api-bindings"]
+
+[dependencies]
+# Async runtime
+tokio = { version = "1.35", features = ["full"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Logging
+tracing = "0.1"
+
+# UUID generation
+uuid = { version = "1.6", features = ["v4", "serde"] }
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+time = "0.3"
+
+# QUIC/TLS
+quinn = "0.10"
+rustls = { version = "0.21", features = ["dangerous_configuration"] }
+rustls-pemfile = "1.0"
+webpki-roots = "0.25"
+rcgen = "0.11"
+
+# For data structures
+bytes = "1.5"
+
+# For URL parsing
+url = "2.5"
+
+[dev-dependencies]
+tokio-test = "0.4"
+criterion = "0.5"
+
+[lib]
+name = "synesis_cloud"
+path = "src/lib.rs"
+
+# Benchmarks will be added in later sessions
+# [[bench]]
+# name = "cloud_benchmarks"
+# harness = false

@@ -10,7 +10,7 @@ use std::time::Duration;
 use tokio::signal::ctrl_c;
 
 use crate::config::Config;
-use synesis_knowledge::{FileWatcher, KnowledgeVault, LocalEmbedder, WatchConfig};
+use synesis_knowledge::{FileWatcher, KnowledgeVault, PlaceholderEmbedder, WatchConfig};
 
 #[derive(Subcommand)]
 pub enum KnowledgeCommands {
@@ -309,13 +309,10 @@ async fn watch_directory(args: WatchArgs) -> anyhow::Result<()> {
         .join(".synesis")
         .join("knowledge.db");
 
-    let vault = Arc::new(Mutex::new(KnowledgeVault::open(&vault_path, 384)?));
+    let vault = Arc::new(tokio::sync::Mutex::new(KnowledgeVault::open(&vault_path, 384)?));
 
-    // Create embedder
-    let mut embedder = LocalEmbedder::new("bge-micro");
-    embedder.load().await?;
-
-    let embedder = Arc::new(embedder);
+    // Create embedder (using placeholder for now)
+    let embedder = Arc::new(tokio::sync::Mutex::new(PlaceholderEmbedder::new(384)));
 
     // Configure watcher
     let mut config = WatchConfig::default();
@@ -326,72 +323,39 @@ async fn watch_directory(args: WatchArgs) -> anyhow::Result<()> {
         config.extensions = Some(include);
     }
 
-    // Create watcher (lock vault for this operation)
-    let vault_for_watcher = vault.lock().unwrap();
-    let (mut watcher, mut rx) =
-        FileWatcher::with_auto_index(config.clone(), &vault_for_watcher, &*embedder)?;
-    // Release lock after watcher creation
-    drop(vault_for_watcher);
+    // Create channel-based indexer
+    let indexer_config = synesis_knowledge::indexer::IndexerConfig::default();
+    let (indexer, _handle) = synesis_knowledge::indexer::DocumentIndexer::new(
+        vault.clone(),
+        embedder.clone(),
+        indexer_config,
+    );
 
-    // Create indexer for auto-indexing
-    // TODO: File watcher disabled due to thread safety issues with Arc<Mutex<KnowledgeVault>>
-    // The DocumentIndexer holds &KnowledgeVault references across await points,
-    // which is incompatible with MutexGuard. Requires architectural redesign.
-    let on_change = Arc::new(move |change| {
-        use synesis_knowledge::watcher::FileChange;
-        match change {
-            FileChange::Modified(path) => {
-                println!(
-                    "{} {:?} - File changed (auto-indexing temporarily disabled)",
-                    "Changed".cyan(),
-                    path
-                );
-                println!(
-                    "  Hint: Use 'synesis knowledge index {}' to manually reindex",
-                    path.display()
-                );
-            },
-            FileChange::Deleted(path) => {
-                println!("{} {:?}", "Removed".red(), path);
-            },
-            FileChange::Renamed(old, new) => {
-                println!("{} {:?} -> {:?}", "Renamed".yellow(), old, new);
-            },
-        }
-    });
+    // Create watcher with indexer channel
+    let mut watcher = FileWatcher::with_auto_index(config.clone(), indexer.command_sender())?;
 
     // Start watcher
-    watcher.start(on_change).await?;
+    watcher.start().await?;
 
     // Initial indexing
     println!("{} Initial indexing...", "Scanning".bold());
-    let vault = vault.lock().unwrap();
-    let indexer = synesis_knowledge::indexer::DocumentIndexer::new(&vault, &*embedder);
 
-    let extensions: Option<Vec<&str>> = config
-        .extensions
-        .as_ref()
-        .map(|exts| exts.iter().map(|e| e.as_str()).collect());
+    // Manually trigger indexing for the directory
+    let command = synesis_knowledge::indexer::IndexCommand::IndexDirectory {
+        path: path.clone(),
+        extensions: config.extensions.clone(),
+    };
 
-    match indexer.index_directory(&path, extensions.as_deref()).await {
-        Ok(results) => {
-            let total_chunks: u32 = results.iter().map(|r| r.chunk_count as u32).sum();
-            println!(
-                "{} Indexed {} files ({} chunks)",
-                "✓".green(),
-                results.len(),
-                total_chunks
-            );
-        },
-        Err(e) => {
-            println!("{} Initial indexing failed: {}", "Warning".yellow(), e);
-        },
+    if let Err(e) = indexer.index_file(path.clone()).await {
+        println!("{} Initial indexing failed: {}", "Warning".yellow(), e);
+    } else {
+        println!("{} Initial indexing complete", "✓".green());
     }
-    // Drop the lock before entering async wait loop
-    drop(vault);
 
     println!();
-    println!("{}", "Watching for changes...".dimmed());
+    println!("{}", "Watching for changes (auto-indexing enabled)...".dimmed());
+    println!("{}", "Files will be automatically indexed when changed.".dimmed());
+    println!();
 
     // Wait for Ctrl+C
     tokio::select! {
@@ -401,12 +365,9 @@ async fn watch_directory(args: WatchArgs) -> anyhow::Result<()> {
             watcher.stop();
             println!("{}", "Done".green());
         }
-        _ = async {
-            // Process changes
-            while let Some(_change) = rx.recv().await {
-                // Changes are processed in the callback
-            }
-        } => {}
+        _ = tokio::time::sleep(tokio::time::Duration::from_secs(u64::MAX)) => {
+            unreachable!()
+        }
     }
 
     Ok(())

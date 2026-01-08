@@ -6,6 +6,7 @@ members = [
     "crates/synesis-privacy",
     "crates/synesis-models",
     "crates/synesis-knowledge",
+    "crates/synesis-cloud",
 ]
 
 [workspace.package]
@@ -82,6 +83,7 @@ synesis-core = { path = "crates/synesis-core" }
 synesis-privacy = { path = "crates/synesis-privacy" }
 synesis-models = { path = "crates/synesis-models" }
 synesis-knowledge = { path = "crates/synesis-knowledge" }
+synesis-cloud = { path = "crates/synesis-cloud" }
 
 [profile.release]
 opt-level = 3

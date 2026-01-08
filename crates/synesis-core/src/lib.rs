@@ -66,7 +66,9 @@
 pub mod agents;
 pub mod consensus;
 pub mod council;
+pub mod error;
 pub mod manifest;
+pub mod metrics;
 pub mod routing;
 
 // Re-exports for convenience
@@ -76,32 +78,11 @@ pub use consensus::{
     Votes,
 };
 pub use council::{Council, CouncilConfig, CouncilResponse};
+pub use error::{Result as SynesisResult, SynesisError};
 pub use manifest::A2AManifest;
+pub use metrics::{Metrics, MetricsSnapshot, QueryTimer};
 
-/// Core error types
-#[derive(Debug, thiserror::Error)]
-pub enum CoreError {
-    #[error("Agent error: {0}")]
-    AgentError(String),
-
-    #[error("Consensus not reached after {rounds} rounds")]
-    NoConsensus { rounds: u8 },
-
-    #[error("Ethos veto: {reason}")]
-    EthosVeto { reason: String },
-
-    #[error("Model not available: {model}")]
-    ModelUnavailable { model: String },
-
-    #[error("Knowledge error: {0}")]
-    KnowledgeError(String),
-
-    #[error("Privacy error: {0}")]
-    PrivacyError(String),
-
-    #[error("Internal error: {0}")]
-    Internal(String),
-}
-
-/// Result type for core operations
-pub type CoreResult<T> = Result<T, CoreError>;
+// Type aliases for backward compatibility during migration
+// These allow existing code using CoreError/CoreResult to work with SynesisError
+pub type CoreError = SynesisError;
+pub type CoreResult<T> = SynesisResult<T>;

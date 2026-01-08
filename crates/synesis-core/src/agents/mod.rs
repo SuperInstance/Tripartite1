@@ -106,7 +106,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use crate::manifest::A2AManifest;
-use crate::CoreResult;
+use crate::SynesisResult as CoreResult;
 
 // ============================================================================
 // Core Agent Trait

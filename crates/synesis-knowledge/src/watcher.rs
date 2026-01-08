@@ -7,13 +7,11 @@ use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, instrument, warn};
 
-use crate::embeddings::EmbeddingProvider;
-use crate::vault::KnowledgeVault;
+use crate::indexer::IndexCommand;
 use crate::{KnowledgeError, KnowledgeResult};
 
 /// Watch configuration
@@ -70,9 +68,6 @@ pub enum FileChange {
     Renamed(PathBuf, PathBuf),
 }
 
-/// Callback for file changes
-pub type ChangeCallback = Arc<dyn Fn(FileChange) + Send + Sync>;
-
 /// File checksum cache
 #[derive(Debug, Clone)]
 struct FileChecksum {
@@ -86,7 +81,7 @@ struct FileChecksum {
 pub struct FileWatcher {
     config: WatchConfig,
     watcher: Option<RecommendedWatcher>,
-    change_tx: Option<mpsc::Sender<FileChange>>,
+    change_tx: Option<mpsc::Sender<IndexCommand>>,
     /// Cache of file checksums to detect actual changes
     checksums: HashMap<PathBuf, FileChecksum>,
 }
@@ -102,25 +97,28 @@ impl FileWatcher {
         }
     }
 
-    /// Create auto-indexing watcher
-    pub fn with_auto_index<E: EmbeddingProvider>(
+    /// Create auto-indexing watcher with channel-based indexer
+    ///
+    /// This creates a watcher that automatically sends IndexCommand messages
+    /// when files change. The channel should be connected to a DocumentIndexer.
+    pub fn with_auto_index(
         config: WatchConfig,
-        _vault: &KnowledgeVault,
-        _embedder: &E,
-    ) -> KnowledgeResult<(Self, mpsc::Receiver<FileChange>)> {
-        let (tx, rx) = mpsc::channel::<FileChange>(100);
-
+        command_tx: mpsc::Sender<IndexCommand>,
+    ) -> KnowledgeResult<Self> {
         let mut watcher = Self {
             config: config.clone(),
             watcher: None,
-            change_tx: Some(tx),
+            change_tx: None, // We'll use the command_tx directly
             checksums: HashMap::new(),
         };
 
         // Pre-populate checksums for existing files
         watcher.scan_existing_files()?;
 
-        Ok((watcher, rx))
+        // Store the command sender for use in event processing
+        watcher.change_tx = Some(command_tx);
+
+        Ok(watcher)
     }
 
     /// Scan existing files and populate checksum cache
@@ -183,12 +181,16 @@ impl FileWatcher {
     }
 
     /// Start watching directories
-    #[instrument(skip(self, on_change))]
-    pub async fn start(&mut self, on_change: ChangeCallback) -> KnowledgeResult<()> {
+    ///
+    /// This spawns a background task that monitors file changes and sends
+    /// IndexCommand messages to the channel.
+    pub async fn start(&mut self) -> KnowledgeResult<()> {
         info!("Starting file watcher");
 
-        let (tx, mut rx) = mpsc::channel::<FileChange>(100);
-        self.change_tx = Some(tx.clone());
+        let command_tx = self
+            .change_tx
+            .clone()
+            .ok_or_else(|| KnowledgeError::Internal("No command channel configured".to_string()))?;
 
         // Create notify watcher
         let (notify_tx, notify_rx) = std::sync::mpsc::channel();
@@ -244,9 +246,8 @@ impl FileWatcher {
                             EventKind::Remove(_) => {
                                 // Remove from checksums
                                 checksums.remove(&path);
-                                if let Err(e) = tx.send(FileChange::Deleted(path)).await {
-                                    error!("Failed to send delete event: {}", e);
-                                }
+                                // We don't send delete commands for now
+                                // as we don't have a DeleteFile command
                             },
                             _ => {},
                         }
@@ -285,8 +286,13 @@ impl FileWatcher {
                                         );
                                     }
 
-                                    if let Err(e) = tx.send(FileChange::Modified(path)).await {
-                                        error!("Failed to send modify event: {}", e);
+                                    // Send IndexCommand to reindex the file
+                                    if let Err(e) =
+                                        command_tx.try_send(IndexCommand::IndexFile(path.clone()))
+                                    {
+                                        error!("Failed to send index command for {:?}: {}", path, e);
+                                    } else {
+                                        debug!("Sent index command for changed file: {:?}", path);
                                     }
                                 }
                             }
@@ -295,14 +301,6 @@ impl FileWatcher {
                 }
 
                 tokio::time::sleep(Duration::from_millis(100)).await;
-            }
-        });
-
-        // Spawn callback handler
-        tokio::spawn(async move {
-            while let Some(change) = rx.recv().await {
-                debug!("File change: {:?}", change);
-                on_change(change);
             }
         });
 

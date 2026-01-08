@@ -24,6 +24,12 @@ serde_json.workspace = true
 anyhow.workspace = true
 thiserror.workspace = true
 
+# Database errors (for From<rusqlite::Error>)
+rusqlite.workspace = true
+
+# HTTP errors (for From<reqwest::Error>)
+reqwest.workspace = true
+
 # Logging
 tracing.workspace = true
 

@@ -20,6 +20,9 @@ pub use inference::{InferenceRequest, InferenceResponse, ModelInstance, ModelPoo
 pub use manifest::{HardwareManifest, ModelRecommendation};
 pub use registry::{ModelInfo, ModelRegistry, ModelStatus};
 
+/// Result type for model operations
+pub type ModelResult<T> = std::result::Result<T, ModelError>;
+
 /// Model error types
 #[derive(Debug, thiserror::Error)]
 pub enum ModelError {
@@ -60,9 +63,6 @@ pub enum ModelError {
     #[error("Internal error: {0}")]
     Internal(String),
 }
-
-/// Result type for model operations
-pub type ModelResult<T> = Result<T, ModelError>;
 
 /// Quantization levels
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]

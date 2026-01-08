@@ -87,7 +87,7 @@ use tracing::{debug, info, instrument, warn};
 
 use crate::agents::{Agent, AgentInput, AgentOutput, EthosAgent, LogosAgent, PathosAgent};
 use crate::manifest::A2AManifest;
-use crate::CoreResult;
+use crate::SynesisResult as CoreResult;
 
 // Privacy integration
 use synesis_privacy::{RedactionStats as PrivacyRedactionStats, Redactor};

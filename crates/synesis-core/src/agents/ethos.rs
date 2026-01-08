@@ -15,6 +15,7 @@ use async_trait::async_trait;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::Arc;
 use tracing::{debug, info, instrument, warn};
 
 use super::{
@@ -26,11 +27,12 @@ use crate::manifest::A2AManifest;
 use crate::{CoreError, CoreResult};
 
 /// Ethos agent for verification
+#[derive(Clone)]
 pub struct EthosAgent {
     config: AgentConfig,
-    ready: bool,
-    // Dangerous patterns for veto scenarios
-    veto_patterns: Vec<VetoPattern>,
+    ready: Arc<std::sync::atomic::AtomicBool>,
+    // Dangerous patterns for veto scenarios (immutable collection)
+    veto_patterns: Arc<Vec<VetoPattern>>,
 }
 
 /// A dangerous pattern that triggers automatic veto
@@ -66,6 +68,19 @@ pub struct EthosVerdict {
 
     /// Overall confidence score (0.0-1.0)
     pub confidence: f32,
+}
+
+/// Prefetch data for Ethos verification (computed in parallel with Logos)
+#[derive(Debug, Clone)]
+pub struct EthosPrefetchData {
+    /// Pre-computed safety pattern checks
+    pub safety_constraints: Vec<Constraint>,
+    /// Pre-fetched hardware limits
+    pub hardware_constraints: Vec<Constraint>,
+    /// Whether the solution contains code
+    pub contains_code: bool,
+    /// Whether secrets were detected
+    pub contains_secrets: bool,
 }
 
 impl EthosAgent {
@@ -144,8 +159,8 @@ impl EthosAgent {
 
         Self {
             config,
-            ready: false,
-            veto_patterns,
+            ready: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            veto_patterns: Arc::new(veto_patterns),
         }
     }
 
@@ -157,8 +172,39 @@ impl EthosAgent {
         // For now, mark as ready with placeholder model
         debug!("Model loading placeholder - phi-3-mini-4k will be integrated");
 
-        self.ready = true;
+        self.ready.store(true, std::sync::atomic::Ordering::SeqCst);
         Ok(())
+    }
+
+    /// Prefetch verification data (can run in parallel with Logos)
+    /// This pre-computes expensive checks before the Logos solution is ready
+    #[instrument(skip(self, input))]
+    pub async fn prefetch(&self, input: &AgentInput) -> CoreResult<EthosPrefetchData> {
+        let manifest = &input.manifest;
+        let query = &manifest.query;
+
+        debug!("Prefetching Ethos verification data");
+
+        // Pre-check safety patterns on the query (before we have the solution)
+        let safety_constraints = self.check_safety_patterns(query).await?;
+
+        // Pre-fetch hardware constraints
+        let hardware_constraints = if self.should_check_hardware(manifest) {
+            self.check_hardware_constraints(query).await?
+        } else {
+            vec![]
+        };
+
+        // Pre-detect content characteristics
+        let contains_code = self.contains_code(query);
+        let contains_secrets = self.contains_secrets(query);
+
+        Ok(EthosPrefetchData {
+            safety_constraints,
+            hardware_constraints,
+            contains_code,
+            contains_secrets,
+        })
     }
 
     /// Main verification entry point
@@ -239,7 +285,7 @@ impl EthosAgent {
     async fn check_safety_patterns(&self, solution: &str) -> CoreResult<Vec<Constraint>> {
         let mut constraints = Vec::new();
 
-        for veto_pattern in &self.veto_patterns {
+        for veto_pattern in self.veto_patterns.iter() {
             if veto_pattern.pattern.is_match(solution) {
                 warn!("Detected veto pattern: {}", veto_pattern.description);
 
@@ -600,7 +646,7 @@ impl Agent for EthosAgent {
     }
 
     async fn process(&self, input: AgentInput) -> CoreResult<AgentOutput> {
-        if !self.ready {
+        if !self.is_ready() {
             return Err(CoreError::AgentError("Ethos not initialized".to_string()));
         }
 
@@ -647,7 +693,7 @@ impl Agent for EthosAgent {
     }
 
     fn is_ready(&self) -> bool {
-        self.ready
+        self.ready.load(std::sync::atomic::Ordering::SeqCst)
     }
 
     fn model(&self) -> &str {
