@@ -1,4 +1,20 @@
 //! `synesis cloud` - Cloud connection management
+//!
+//! Provides commands for:
+//! - Authentication (login/logout)
+//! - Account status and balance
+//! - Usage tracking and top-up
+//! - Cloud escalation queries
+//! - LoRA upload and management
+//! - Collaborator invites
+//!
+//! ## Command Structure
+//!
+//! All commands are subcommands under `synesis cloud`:
+//! - `synesis cloud login` - Authenticate with cloud
+//! - `synesis cloud status` - Show account info
+//! - `synesis cloud ask` - Send query to cloud LLM
+//! - `synesis cloud push` - Upload LoRA to cloud
 
 use clap::Subcommand;
 use comfy_table::{presets::UTF8_FULL, Table};
@@ -6,6 +22,33 @@ use owo_colors::OwoColorize;
 use std::io::Write;
 
 use crate::config::Config;
+
+// ============================================================================
+// CONSTANTS: Cloud Command Configuration
+// ============================================================================
+
+/// Default maximum tokens for cloud queries
+///
+/// Balances cost with response completeness.
+/// 1024 tokens is ~750 words or ~1 page of text.
+///
+/// TODO: Use in ask command when implementing token limit logic
+#[allow(dead_code)]
+const DEFAULT_MAX_TOKENS: u32 = 1024;
+
+/// Maximum upload size for LoRA files (2 GB)
+///
+/// Prevents uploads of excessively large files that would:
+/// - Take too long to upload
+/// - Exceed cloud storage limits
+/// - Cause processing timeouts
+const MAX_LORA_UPLOAD_SIZE_MB: u64 = 2 * 1024;
+
+/// Progress bar refresh interval (milliseconds)
+///
+/// Updates progress bar every 100ms for smooth animation
+/// without excessive terminal redraws.
+const PROGRESS_REFRESH_MS: u64 = 100;
 
 #[derive(Subcommand)]
 pub enum CloudCommands {
@@ -74,26 +117,50 @@ pub struct UsageArgs {
 #[derive(clap::Args)]
 pub struct AskArgs {
     /// Query to send to cloud
+    ///
+    /// If not provided, will read from stdin until Ctrl+D.
+    /// Multi-line queries are supported.
     #[arg(short, long)]
     pub query: Option<String>,
 
     /// Model to use: sonnet, opus, auto
+    ///
+    /// - `auto`: Automatically select best model (default)
+    /// - `sonnet`: Claude Sonnet (balanced, cost-effective)
+    /// - `opus`: Claude Opus (most capable, more expensive)
     #[arg(short, long, default_value = "auto")]
     pub model: String,
 
     /// Max tokens to generate
+    ///
+    /// Controls maximum length of response.
+    /// Default: 1024 (~750 words or ~1 page).
+    /// Maximum: 128000 (for complex long-form responses).
     #[arg(short, long, default_value = "1024")]
     pub max_tokens: u32,
 
     /// Stream response
+    ///
+    /// Stream tokens as they're generated rather than waiting for complete response.
+    /// Provides faster feedback and better user experience for long responses.
     #[arg(short, long)]
     pub stream: bool,
 
     /// Tone: professional, casual, technical
+    ///
+    /// Adjusts response style:
+    /// - `professional`: Formal, business-appropriate (default)
+    /// - `casual`: Conversational, friendly
+    /// - `technical`: Detailed, jargon-heavy
     #[arg(long, default_value = "professional")]
     pub tone: String,
 
     /// Verbosity: concise, normal, detailed
+    ///
+    /// Controls response length:
+    /// - `concise`: Brief, to-the-point answers
+    /// - `normal`: Balanced detail (default)
+    /// - `detailed`: Comprehensive explanations
     #[arg(long, default_value = "normal")]
     pub verbosity: String,
 }
@@ -384,17 +451,43 @@ async fn push(args: PushArgs) -> anyhow::Result<()> {
     println!("{}", "Uploading LoRA to cloud".bold());
     println!();
 
-    // Check if file exists
+    // Validate file exists
     let path = std::path::Path::new(&args.file);
     if !path.exists() {
         println!("{} File not found: {}", "Error".red(), args.file);
+        println!();
+        println!("Please check the file path and try again.");
+        println!("LoRA files should have .gguf or .safetensors extension.");
         return Ok(());
     }
 
-    // Get file size
-    let metadata = std::fs::metadata(&args.file)?;
-    let size_mb = metadata.len() as f64 / (1024.0 * 1024.0);
+    // Validate file is not a directory
+    if path.is_dir() {
+        println!("{} Path is a directory, not a file: {}", "Error".red(), args.file);
+        return Ok(());
+    }
 
+    // Get and validate file size
+    let metadata = std::fs::metadata(&args.file)?;
+    let size_bytes = metadata.len();
+    let size_mb = size_bytes as f64 / (1024.0 * 1024.0);
+    let size_mb_limit = MAX_LORA_UPLOAD_SIZE_MB as f64;
+
+    if size_bytes > MAX_LORA_UPLOAD_SIZE_MB * 1024 * 1024 {
+        println!("{} File too large: {:.2} MB (max {} MB)",
+            "Error".red(),
+            size_mb,
+            size_mb_limit
+        );
+        println!();
+        println!("Consider:");
+        println!("  - Using a more aggressive quantization (q4 instead of f16)");
+        println!("  - Reducing training epochs");
+        println!("  - Contacting support for larger uploads");
+        return Ok(());
+    }
+
+    // Display LoRA information
     println!("File: {}", args.file.cyan());
     println!("Size: {:.2} MB", size_mb);
     println!("Name: {}", args.name);
@@ -408,11 +501,15 @@ async fn push(args: PushArgs) -> anyhow::Result<()> {
     println!("{}", "Uploading...".dimmed());
 
     // TODO: Actually upload via LoRA upload client
+    // Simulate upload with progress animation
     let progress_chars = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-    for (i, ch) in progress_chars.iter().cycle().take(20).enumerate() {
-        print!("\r {} Uploading {}%", ch, (i + 1) * 5);
+    let steps = 20;
+
+    for (i, ch) in progress_chars.iter().cycle().take(steps).enumerate() {
+        let progress = (i + 1) * 5;
+        print!("\r {} Uploading {}%", ch, progress);
         std::io::stdout().flush()?;
-        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+        tokio::time::sleep(tokio::time::Duration::from_millis(PROGRESS_REFRESH_MS)).await;
     }
 
     println!();

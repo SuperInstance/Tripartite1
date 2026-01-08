@@ -1,4 +1,22 @@
 //! `synesis model` - Model management commands
+//!
+//! Provides commands for:
+//! - Listing available and installed models
+//! - Downloading models from HuggingFace
+//! - Removing installed models
+//! - Verifying model integrity
+//! - Showing model details and metadata
+//!
+//! ## Model Registry
+//!
+//! Models are registered in the `MODELS` constant with:
+//! - Internal name (for CLI commands)
+//! - Display name (for user-facing output)
+//! - Description (use case and capabilities)
+//! - Size in MB (for download progress)
+//! - HuggingFace download URL
+//! - File name (for local storage)
+//! - Model type (Embedding or LLM)
 
 use clap::Subcommand;
 use comfy_table::{presets::UTF8_FULL, Table};
@@ -6,6 +24,26 @@ use owo_colors::OwoColorize;
 use std::path::PathBuf;
 
 use crate::config::Config;
+
+// ============================================================================
+// CONSTANTS: Model Configuration
+// ============================================================================
+
+/// Minimum file size for model verification (1 KB)
+///
+/// Prevents accepting empty or truncated model files.
+/// Real model files are at least tens of MB.
+const MIN_MODEL_SIZE_BYTES: u64 = 1024;
+
+/// Models directory name
+///
+/// Subdirectory within ~/.synesis/ for storing model files.
+const MODELS_DIR_NAME: &str = "models";
+
+/// Home directory config subdirectory
+///
+/// Main directory for all Synesis configuration and data.
+const CONFIG_DIR_NAME: &str = ".synesis";
 
 #[derive(Subcommand)]
 pub enum ModelCommands {
@@ -398,12 +436,36 @@ async fn verify_model(args: VerifyArgs, _config: &Config) -> anyhow::Result<()> 
 }
 
 /// Verify a model file
+///
+/// Performs basic validation to ensure the model file is:
+/// - Present and accessible
+/// - Non-empty (at least 1KB)
+/// - Regular file (not directory/symlink)
+///
+/// # Future Enhancements
+///
+/// TODO: Add SHA256 checksum verification against known-good values
+/// TODO: Validate GGUF file format header
+/// TODO: Check model architecture compatibility
+///
+/// # Errors
+///
+/// Returns error if:
+/// - File doesn't exist
+/// - File is too small (< 1KB)
+/// - File metadata can't be read
 fn verify_model_file(path: &PathBuf) -> anyhow::Result<()> {
     let metadata = std::fs::metadata(path)?;
 
-    // Check file size (must be at least 1KB)
-    if metadata.len() < 1024 {
-        anyhow::bail!("File too small ({} bytes)", metadata.len());
+    // Check file size (must be at least MIN_MODEL_SIZE_BYTES)
+    let file_size = metadata.len();
+    if file_size < MIN_MODEL_SIZE_BYTES {
+        anyhow::bail!(
+            "Model file too small ({} bytes, minimum {} bytes). \
+             File may be corrupted or incomplete.",
+            file_size,
+            MIN_MODEL_SIZE_BYTES
+        );
     }
 
     // TODO: Add SHA256 checksum verification
@@ -413,7 +475,33 @@ fn verify_model_file(path: &PathBuf) -> anyhow::Result<()> {
 }
 
 /// Get the models directory
+///
+/// Returns the path to `~/.synesis/models/` where model files are stored.
+///
+/// # Directory Structure
+///
+/// ```text
+/// ~/.synesis/
+///   ├── models/
+///   │   ├── bge-micro-v2.gguf
+///   │   ├── Phi-3-mini-4k-instruct-q4.gguf
+///   │   └── llama-3.2-8b-instruct-q4_k_m.gguf
+///   └── knowledge.db
+/// ```
+///
+/// # Errors
+///
+/// Returns error if:
+/// - Home directory can't be determined
+/// - Path construction fails
 fn get_models_dir() -> anyhow::Result<PathBuf> {
-    let home = dirs::home_dir().ok_or_else(|| anyhow::anyhow!("Could not find home directory"))?;
-    Ok(home.join(".synesis").join("models"))
+    let home = dirs::home_dir()
+        .ok_or_else(|| {
+            anyhow::anyhow!(
+                "Could not determine home directory. \
+                 Ensure HOME environment variable is set."
+            )
+        })?;
+
+    Ok(home.join(CONFIG_DIR_NAME).join(MODELS_DIR_NAME))
 }

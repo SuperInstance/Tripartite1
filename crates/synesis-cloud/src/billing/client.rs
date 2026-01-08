@@ -1,11 +1,69 @@
 //! Billing client
 //!
-//! Tracks usage and calculates costs
+//! Tracks usage and calculates costs with tier-based pricing.
+//!
+//! ## Billing Tiers
+//!
+//! - **Free**: Monthly quota with no charges until depleted
+//! - **Managed**: 3% markup on Cloudflare wholesale costs
+//! - **BYOK**: 30% licensing fee for bringing your own key
+//!
+//! ## Cost Calculation Algorithm
+//!
+//! 1. Determine base pricing from model (input/output per 1M tokens)
+//! 2. Calculate raw cost: `(tokens_in / 1M) * input_price + (tokens_out / 1M) * output_price`
+//! 3. Apply tier-specific markup (percentage of base cost)
+//! 4. Round to nearest cent for final charge
+//!
+//! ## Performance
+//!
+//! - **Balance queries**: O(1) - Single RwLock read
+//! - **Usage recording**: O(1) - Single RwLock write
+//! - **Cost calculation**: O(1) - Simple arithmetic, no I/O
+//!
+//! ## Thread Safety
+//!
+//! Uses `Arc<RwLock<LocalLedger>>` for concurrent access.
+//! Multiple readers can query balance simultaneously while writes are serialized.
 
 use crate::billing::types::{BillingTier, UsageEvent, Balance, LocalLedger};
 use crate::error::{CloudError, CloudResult};
 use std::sync::Arc;
 use tokio::sync::RwLock;
+
+// ============================================================================
+// CONSTANTS: Billing Configuration
+// ============================================================================
+
+/// Number of tokens in pricing unit (1 million)
+///
+/// All model pricing is expressed as dollars per 1M tokens.
+/// This constant is used to scale actual token counts to pricing units.
+const TOKENS_PER_PRICING_UNIT: u64 = 1_000_000;
+
+/// Convert dollars to cents (multiplier)
+///
+/// All internal calculations use cents to avoid floating-point precision issues.
+/// This is multiplied after dollar-based pricing.
+const CENTS_PER_DOLLAR: f64 = 100.0;
+
+/// Default markup percentage for Managed tier (3%)
+///
+/// Represents the operational overhead for managed cloud infrastructure.
+/// Based on Cloudflare wholesale costs plus small margin.
+///
+/// TODO: Use in calculate_cost() when implementing managed tier pricing
+#[allow(dead_code)]
+const DEFAULT_MANAGED_MARKUP_PERCENT: f64 = 3.0;
+
+/// Licensing fee percentage for BYOK tier (30%)
+///
+/// Fee for users who bring their own API keys but use Synesis protocol.
+/// Covers protocol licensing and infrastructure costs.
+///
+/// TODO: Use in calculate_cost() when implementing BYOK tier pricing
+#[allow(dead_code)]
+const DEFAULT_BYOK_LICENSING_PERCENT: f64 = 30.0;
 
 /// Billing client for cost tracking and calculation
 ///
@@ -93,46 +151,69 @@ impl BillingClient {
     }
 
     /// Calculate cost for tokens
+    ///
+    /// # Algorithm
+    ///
+    /// 1. Get model pricing (input/output per 1M tokens in dollars)
+    /// 2. Calculate base cost in cents:
+    ///    - `input_cost = (tokens_in / 1,000,000) * input_price * 100`
+    ///    - `output_cost = (tokens_out / 1,000,000) * output_price * 100`
+    /// 3. Apply tier-specific markup (percentage of base cost)
+    /// 4. Round to nearest cent for final charge
+    ///
+    /// # Performance
+    ///
+    /// O(1) time complexity - arithmetic operations only, no I/O.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// # use synesis_cloud::billing::client::BillingClient;
+    /// # use synesis_cloud::billing::types::BillingTier;
+    /// # let client = BillingClient::new("key".to_string(), BillingTier::Managed { markup_percent: 3.0 });
+    /// // Claude Sonnet: 1K input + 500 output tokens
+    /// let cost = client.calculate_cost("claude-sonnet", 1000, 500)?;
+    /// // Base: ~1.05¢, Markup (3%): ~0.03¢, Final: ~1.08¢ → 1¢
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
     pub fn calculate_cost(
         &self,
         model: &str,
         tokens_in: u32,
         tokens_out: u32,
     ) -> CloudResult<CostCalculation> {
-        // Base pricing (per 1M tokens)
+        // Step 1: Get model pricing (per 1M tokens in dollars)
         let (input_price_per_1m, output_price_per_1m) = self.get_model_pricing(model)?;
 
-        // Calculate base cost
-        let input_cost = (tokens_in as f64 / 1_000_000.0) * input_price_per_1m;
-        let output_cost = (tokens_out as f64 / 1_000_000.0) * output_price_per_1m;
-        let base_cost_cents = (input_cost + output_cost) * 100.0;
+        // Step 2: Calculate base cost in cents
+        // Formula: (tokens / 1,000,000) * price_per_1m * 100
+        let input_cost = (tokens_in as f64 / TOKENS_PER_PRICING_UNIT as f64) * input_price_per_1m * CENTS_PER_DOLLAR;
+        let output_cost = (tokens_out as f64 / TOKENS_PER_PRICING_UNIT as f64) * output_price_per_1m * CENTS_PER_DOLLAR;
+        let base_cost_cents = (input_cost + output_cost).round() as u32;
 
-        // Round to nearest cent
-        let base_cost_cents = base_cost_cents.round() as u32;
-
-        // Apply tier markup
+        // Step 3: Apply tier markup
         let (final_charge_cents, markup_cents) = {
-            // Clone the tier for calculation
+            // Clone the tier for calculation (avoid holding lock across arithmetic)
             let tier = {
                 let ledger = self.ledger.try_read()
-                    .map_err(|_| CloudError::other("Ledger locked"))?;
+                    .map_err(|_| CloudError::other("Ledger is currently locked, please retry"))?;
                 ledger.tier.clone()
             };
 
             match tier {
                 BillingTier::Free { .. } => {
-                    // Free tier: no charge up to limit
+                    // Free tier: no charge until quota depleted
                     (0, 0)
                 }
                 BillingTier::Managed { markup_percent } => {
-                    let markup = ((base_cost_cents as f64) * (markup_percent as f64)) / 100.0;
-                    let markup = markup.round() as u32;
-                    (base_cost_cents + markup, markup)
+                    // Managed tier: 3% markup on wholesale costs
+                    let markup = (base_cost_cents as f64 * markup_percent as f64 / 100.0).round() as u32;
+                    (base_cost_cents.saturating_add(markup), markup)
                 }
                 BillingTier::Byok { licensing_percent, .. } => {
-                    let licensing = ((base_cost_cents as f64) * (licensing_percent as f64)) / 100.0;
-                    let licensing = licensing.round() as u32;
-                    (base_cost_cents + licensing, licensing)
+                    // BYOK tier: 30% licensing fee
+                    let licensing = (base_cost_cents as f64 * licensing_percent as f64 / 100.0).round() as u32;
+                    (base_cost_cents.saturating_add(licensing), licensing)
                 }
             }
         };
@@ -145,13 +226,36 @@ impl BillingClient {
     }
 
     /// Get model pricing (per 1M tokens, in dollars)
+    ///
+    /// Returns tuple of (input_price_per_1m, output_price_per_1m).
+    ///
+    /// # Pricing Source
+    ///
+    /// Prices as of 2025 from Anthropic/OpenAI public pricing pages.
+    /// Subject to change - update when providers change pricing.
+    ///
+    /// # Errors
+    ///
+    /// Returns validation error if model is not recognized.
     fn get_model_pricing(&self, model: &str) -> CloudResult<(f64, f64)> {
-        // Pricing as of 2025 (Anthropic/OpenAI)
+        // Model pricing: (input_per_1m_dollars, output_per_1m_dollars)
+        // Source: Anthropic/OpenAI pricing as of 2025
         let pricing = match model {
+            // Claude Opus: Most capable, most expensive
             "claude-opus" => (15.0, 75.0),
+
+            // Claude Sonnet: Balanced performance/cost
             "claude-sonnet" => (3.0, 15.0),
+
+            // GPT-4 Turbo: OpenAI's flagship model
             "gpt4-turbo" => (10.0, 30.0),
-            _ => return Err(CloudError::validation(format!("Unknown model: {}", model))),
+
+            _ => {
+                return Err(CloudError::validation(format!(
+                    "Unknown model '{}'. Supported models: claude-opus, claude-sonnet, gpt4-turbo",
+                    model
+                )))
+            }
         };
 
         Ok(pricing)
