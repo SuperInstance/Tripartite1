@@ -2,11 +2,14 @@
 
 > **Privacy-first, local-first AI with tripartite consensus**
 
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/SuperInstance/Tripartite1)
+[![CI](https://github.com/SuperInstance/Tripartite1/actions/workflows/ci.yml/badge.svg)](https://github.com/SuperInstance/Tripartite1/actions/workflows/ci.yml)
+[![Documentation](https://github.com/SuperInstance/Tripartite1/actions/workflows/documentation.yml/badge.svg)](https://github.com/SuperInstance/Tripartite1/actions/workflows/documentation.yml)
+[![Security](https://github.com/SuperInstance/Tripartite1/actions/workflows/security.yml/badge.svg)](https://github.com/SuperInstance/Tripartite1/actions/workflows/security.yml)
+[![codecov](https://codecov.io/gh/SuperInstance/Tripartite1/branch/main/graph/badge.svg)](https://codecov.io/gh/SuperInstance/Tripartite1)
 [![License](https://img.shields.io/badge/license-MIT%20%7C%20Apache--2.0-blue.svg)](LICENSE-APACHE)
 [![Rust Version](https://img.shields.io/badge/rust-1.75%2B-orange.svg)](https://www.rust-lang.org/)
 [![Phase](https://img.shields.io/badge/phase-2%20%7C%20Cloud%20Mesh-yellow.svg)](phases/PHASE_2_DETAILED_ROADMAP.md)
-[![Tests](https://img.shields.io/badge/tests-250%2B-brightgreen.svg)](https://github.com/SuperInstance/Tripartite1)
+[![Tests](https://img.shields.io/badge/tests-234%2F234-brightgreen.svg)](https://github.com/SuperInstance/Tripartite1)
 
 **SuperInstance AI** is a revolutionary agentic AI system that prioritizes your privacy through local processing while enabling intelligent cloud escalation when needed. Unlike traditional AI chatbots, SuperInstance uses a **tripartite consensus system** where three specialized AI agents—Pathos, Logos, and Ethos—must agree before responding.
 
