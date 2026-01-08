@@ -211,14 +211,23 @@ async fn download_model(args: DownloadArgs, _config: &Config) -> anyhow::Result<
     let model_info = MODELS
         .iter()
         .find(|m| m.name == args.model)
-        .ok_or_else(|| anyhow::anyhow!("Unknown model: {}. Available models: {}", args.model,
-            MODELS.iter().map(|m| m.name).collect::<Vec<_>>().join(", ")))?;
+        .ok_or_else(|| {
+            anyhow::anyhow!(
+                "Unknown model: {}. Available models: {}",
+                args.model,
+                MODELS.iter().map(|m| m.name).collect::<Vec<_>>().join(", ")
+            )
+        })?;
 
     println!("{} {}", "Downloading:".bold(), model_info.display_name);
-    println!("{} {}", "Type:".dimmed(), match model_info.model_type {
-        ModelType::Embedding => "Embedding Model",
-        ModelType::Llm => "Large Language Model",
-    });
+    println!(
+        "{} {}",
+        "Type:".dimmed(),
+        match model_info.model_type {
+            ModelType::Embedding => "Embedding Model",
+            ModelType::Llm => "Large Language Model",
+        }
+    );
     println!("{} {} MB", "Size:".dimmed(), model_info.size_mb);
     println!();
     println!("{} {}", "Source URL:".dimmed(), model_info.url);
@@ -227,10 +236,16 @@ async fn download_model(args: DownloadArgs, _config: &Config) -> anyhow::Result<
     println!("{}", "Download instructions:".bold());
     println!();
     println!("To download this model, run:");
-    println!("  curl -L {} -o ~/.synesis/models/{}", model_info.url, model_info.file_name);
+    println!(
+        "  curl -L {} -o ~/.synesis/models/{}",
+        model_info.url, model_info.file_name
+    );
     println!();
     println!("Or use wget:");
-    println!("  wget {} -O ~/.synesis/models/{}", model_info.url, model_info.file_name);
+    println!(
+        "  wget {} -O ~/.synesis/models/{}",
+        model_info.url, model_info.file_name
+    );
     println!();
     println!("{} Models directory: ~/.synesis/models/", "Note:".yellow());
     println!();
@@ -239,8 +254,7 @@ async fn download_model(args: DownloadArgs, _config: &Config) -> anyhow::Result<
     if matches!(model_info.model_type, ModelType::Embedding) {
         println!(
             "{}",
-            "Note: This embedding model will be used for semantic search."
-                .dimmed()
+            "Note: This embedding model will be used for semantic search.".dimmed()
         );
     }
 
@@ -315,18 +329,12 @@ async fn show_model_info(args: InfoArgs) -> anyhow::Result<()> {
 
     if model_path.exists() {
         let metadata = std::fs::metadata(&model_path)?;
-        table.add_row(vec![
-            "Status",
-            &"✓ Installed".green().to_string(),
-        ]);
+        table.add_row(vec!["Status", &"✓ Installed".green().to_string()]);
         table.add_row(vec![
             "File Size",
             &format!("{} MB", metadata.len() / 1024 / 1024),
         ]);
-        table.add_row(vec![
-            "Path",
-            &model_path.display().to_string(),
-        ]);
+        table.add_row(vec!["Path", &model_path.display().to_string()]);
     } else {
         table.add_row(vec!["Status", &"○ Not installed".dimmed().to_string()]);
     }
@@ -351,11 +359,11 @@ async fn verify_model(args: VerifyArgs, _config: &Config) -> anyhow::Result<()> 
                     Ok(_) => {
                         println!("{} {} - OK", "✓".green(), model.display_name);
                         verified_count += 1;
-                    }
+                    },
                     Err(e) => {
                         println!("{} {} - FAILED: {}", "✗".red(), model.display_name, e);
                         failed_count += 1;
-                    }
+                    },
                 }
             }
         }

@@ -77,7 +77,7 @@ pub async fn connect_to_cloud(
 /// Resolve DNS hostname to SocketAddr
 ///
 /// # Arguments
-/// * `url` - Cloud URL (e.g., "https://tunnel.superinstance.ai:443")
+/// * `url` - Cloud URL (e.g., `<https://tunnel.superinstance.ai:443>`)
 ///
 /// # Returns
 /// * Resolved SocketAddr

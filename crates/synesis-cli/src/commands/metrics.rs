@@ -47,14 +47,14 @@ pub async fn run(cmd: MetricsCommands) -> anyhow::Result<()> {
             println!("  - Knowledge operations (indexed, searched)");
             println!("  - Privacy (redactions, tokens)");
             println!();
-        }
+        },
         MetricsCommands::Export => {
             println!("# Prometheus Metrics Export");
             println!();
             println!("Metrics collection is not yet integrated.");
             println!("When enabled, metrics will be exported in Prometheus format here.");
             println!();
-        }
+        },
     }
 
     Ok(())

@@ -308,7 +308,10 @@ async fn watch_directory(args: WatchArgs) -> anyhow::Result<()> {
         .join(".synesis")
         .join("knowledge.db");
 
-    let vault = Arc::new(tokio::sync::Mutex::new(KnowledgeVault::open(&vault_path, 384)?));
+    let vault = Arc::new(tokio::sync::Mutex::new(KnowledgeVault::open(
+        &vault_path,
+        384,
+    )?));
 
     // Create embedder (using placeholder for now)
     let embedder = Arc::new(tokio::sync::Mutex::new(PlaceholderEmbedder::new(384)));
@@ -354,8 +357,14 @@ async fn watch_directory(args: WatchArgs) -> anyhow::Result<()> {
     }
 
     println!();
-    println!("{}", "Watching for changes (auto-indexing enabled)...".dimmed());
-    println!("{}", "Files will be automatically indexed when changed.".dimmed());
+    println!(
+        "{}",
+        "Watching for changes (auto-indexing enabled)...".dimmed()
+    );
+    println!(
+        "{}",
+        "Files will be automatically indexed when changed.".dimmed()
+    );
     println!();
 
     // Wait for Ctrl+C

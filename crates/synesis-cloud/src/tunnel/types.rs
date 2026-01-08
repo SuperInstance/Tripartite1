@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 /// Configuration for QUIC tunnel connection
 #[derive(Debug, Clone)]
 pub struct TunnelConfig {
-    /// Cloud endpoint URL (e.g., "https://tunnel.superinstance.ai:443")
+    /// Cloud endpoint URL (e.g., `<https://tunnel.superinstance.ai:443>`)
     pub cloud_url: String,
 
     /// Unique device identifier (generated on init)

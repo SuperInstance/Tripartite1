@@ -1,6 +1,6 @@
 //! `synesis invite` - Collaborator invite management
 
-use clap::{Subcommand, Args};
+use clap::{Args, Subcommand};
 use comfy_table::{presets::UTF8_FULL, Table};
 use owo_colors::OwoColorize;
 
@@ -95,7 +95,10 @@ async fn create_invite(args: CreateArgs) -> anyhow::Result<()> {
     println!("{}", "Next Steps".bold());
     println!("  1. Share the link or code with {}", email);
     println!("  2. They'll be able to collaborate once they accept");
-    println!("  3. Revoke anytime with: synesis invite revoke {}", invite_token);
+    println!(
+        "  3. Revoke anytime with: synesis invite revoke {}",
+        invite_token
+    );
 
     Ok(())
 }
