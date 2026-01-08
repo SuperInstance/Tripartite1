@@ -495,13 +495,12 @@ fn verify_model_file(path: &PathBuf) -> anyhow::Result<()> {
 /// - Home directory can't be determined
 /// - Path construction fails
 fn get_models_dir() -> anyhow::Result<PathBuf> {
-    let home = dirs::home_dir()
-        .ok_or_else(|| {
-            anyhow::anyhow!(
-                "Could not determine home directory. \
+    let home = dirs::home_dir().ok_or_else(|| {
+        anyhow::anyhow!(
+            "Could not determine home directory. \
                  Ensure HOME environment variable is set."
-            )
-        })?;
+        )
+    })?;
 
     Ok(home.join(CONFIG_DIR_NAME).join(MODELS_DIR_NAME))
 }

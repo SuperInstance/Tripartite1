@@ -463,7 +463,11 @@ async fn push(args: PushArgs) -> anyhow::Result<()> {
 
     // Validate file is not a directory
     if path.is_dir() {
-        println!("{} Path is a directory, not a file: {}", "Error".red(), args.file);
+        println!(
+            "{} Path is a directory, not a file: {}",
+            "Error".red(),
+            args.file
+        );
         return Ok(());
     }
 
@@ -474,7 +478,8 @@ async fn push(args: PushArgs) -> anyhow::Result<()> {
     let size_mb_limit = MAX_LORA_UPLOAD_SIZE_MB as f64;
 
     if size_bytes > MAX_LORA_UPLOAD_SIZE_MB * 1024 * 1024 {
-        println!("{} File too large: {:.2} MB (max {} MB)",
+        println!(
+            "{} File too large: {:.2} MB (max {} MB)",
             "Error".red(),
             size_mb,
             size_mb_limit
